@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/app.js" defer></script>
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;}
+  body{background:hsl(216,50%,10%);font-family:Inter,sans-serif;color:hsl(0,0%,98%);-webkit-font-smoothing:antialiased;}
+  *{box-sizing:border-box;}
+  a{color:hsl(45,90%,55%);text-decoration:none;}
+  a:hover{color:hsl(45,90%,62%);}
+  @keyframes pulseGlow{0%,100%{box-shadow:0 0 20px hsl(145,60%,42%,0.45);}50%{box-shadow:0 0 42px hsl(145,60%,42%,0.75);}}
+  input::placeholder{color:hsl(210,15%,65%);}
+  select:focus,input:focus{outline:none;box-shadow:0 0 0 2px hsl(145,60%,42%);}
+</style>
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+if(!window.__fbPixelInit){window.__fbPixelInit=true;fbq('init','2170508356765219');fbq('track','PageView');}
+</script>
+<noscript><img height="1" width="1" style="display:none" src="93f717d7-189d-4898-b8d7-b3bf1c0e310a"></noscript>
+</helmet>
+<div style="min-height:100vh;background:hsl(216,50%,10%);overflow-x:hidden;">
+
+  <!-- HERO -->
+  <section style="position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:3.5rem 1.25rem;background:linear-gradient(135deg,hsl(216,50%,8%) 0%,hsl(216,50%,14%) 50%,hsl(216,45%,10%) 100%);">
+    <div style="position:absolute;top:0;right:0;width:16rem;height:16rem;background:hsl(145,60%,42%,0.06);border-radius:9999px;filter:blur(40px);will-change:auto;"></div>
+    <div style="position:absolute;bottom:0;left:0;width:20rem;height:20rem;background:hsl(45,90%,55%,0.06);border-radius:9999px;filter:blur(40px);will-change:auto;"></div>
+    <div style="max-width:64rem;margin:0 auto;text-align:center;position:relative;z-index:10;">
+      <div style="display:inline-block;margin-bottom:1.5rem;padding:0.5rem 1.25rem;border-radius:9999px;border:1px solid hsl(45,90%,55%,0.4);background:hsl(45,90%,55%,0.1);">
+        <span style="color:hsl(45,90%,55%);font-family:Oswald,sans-serif;font-size:0.9rem;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;">Exclusivo para Donos de Academia</span>
+      </div>
+      <h1 style="font-family:Oswald,sans-serif;font-size:clamp(2rem,5.5vw,3.75rem);font-weight:700;line-height:1.1;margin:0 0 1.5rem;text-wrap:balance;">Descubra como aumentar o&nbsp;<span style="color:rgb(244,192,37);">FATURAMENTO</span>&nbsp;e o número de&nbsp;<span style="color:rgb(47,198,110);">ALUNOS</span>&nbsp;da sua academia em até&nbsp;<span style="color:rgb(244,192,37);">30 DIAS.</span></h1>
+      <p style="color:hsl(0,0%,98%,0.8);font-size:clamp(1rem,1.6vw,1.25rem);max-width:48rem;margin:0 auto 1rem;line-height:1.6;">O método comprovado que levou uma academia de <strong style="color: rgb(250, 250, 250);">300 para +7.000 alunos</strong>&nbsp; e já transformou dezenas de academias pelo Brasil.</p>
+      <p style="color:hsl(0,0%,98%,0.7);font-size:clamp(0.9rem,1.3vw,1.125rem);max-width:42rem;margin:0 auto 2.5rem;">Sem depender de marketing caro. Sem descontos. Sem promoções malucas.</p>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:1.5rem;margin-bottom:2.5rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;background:hsl(216,45%,15%,0.85);padding:0.75rem 1.5rem;border-radius:0.75rem;border:1px solid hsl(216,30%,22%);">
+          <span style="color:hsl(45,90%,55%);font-family:Oswald,sans-serif;font-size:1.5rem;font-weight:700;">21/07</span>
+          <div style="text-align:left;">
+            <p style="margin:0;font-size:0.875rem;color:hsl(210,15%,65%);">Terça-feira</p>
+            <p style="margin:0;color:hsl(0,0%,98%);font-weight:600;">13h — via Google Meet</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <button sc-camel-on-click="{{ openModal }}" style="display:inline-block;background:hsl(145,60%,42%);color:#fff;font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(1rem,1.6vw,1.25rem);padding:1.1rem 2.5rem;border:none;border-radius:0.75rem;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;animation:pulseGlow 2s ease-in-out infinite;" style-hover="background:hsl(145,60%,38%);">Quero Minha Vaga Gratuita</button>
+        <p style="color:hsl(210,15%,65%);font-size:0.875rem;margin-top:1rem;">🔒 Vagas limitadas — 100% gratuito</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section style="padding:5rem 1.25rem;background:hsl(216,45%,14%);">
+    <div style="max-width:56rem;margin:0 auto;">
+      <h2 style="font-family:Oswald,sans-serif;font-size:clamp(1.875rem,3.5vw,2.25rem);font-weight:700;text-align:center;margin:0 0 1rem;">Chega de <span style="color:hsl(45,90%,55%);">lutar contra a maré</span></h2>
+      <p style="color:hsl(210,15%,65%);text-align:center;font-size:1.125rem;margin:0 auto 3rem;max-width:42rem;">Nessa reunião exclusiva, você vai aprender a crescer de verdade:</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;">
+        <sc-for list="{{ pains }}" as="pain" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:1rem;background:hsl(216,45%,14%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;box-shadow:0 1px 2px rgba(0,0,0,0.2);">
+            <div style="flex-shrink:0;width:2rem;height:2rem;border-radius:9999px;background:hsl(145,60%,42%,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(145,60%,50%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+            </div>
+            <span style="color:hsl(0,0%,98%);font-weight:500;">{{ pain }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUDIENCE -->
+  <section style="padding:5rem 1.25rem;background:hsl(216,50%,10%);">
+    <div style="max-width:64rem;margin:0 auto;">
+      <h2 style="font-family:Oswald,sans-serif;font-size:clamp(1.875rem,3.5vw,2.25rem);font-weight:700;text-align:center;margin:0 0 1rem;">Para quem é&nbsp;</h2>
+      <p style="color:hsl(210,15%,65%);text-align:center;font-size:1.125rem;margin:0 auto 3rem;max-width:42rem;">Para donos de academias e studios que querem faturar e lucrar mais — inclusive abrir novas unidades.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:3rem;">
+        <div style="background:hsl(216,45%,14%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:2rem;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+          <div style="width:3.5rem;height:3.5rem;border-radius:9999px;background:hsl(145,60%,42%,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(145,60%,48%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.4 14.4 9.6 9.6"></path><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"></path><path d="m21.5 21.5-1.4-1.4"></path><path d="M3.9 3.9 2.5 2.5"></path><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"></path></svg>
+          </div>
+          <h3 style="font-family:Oswald,sans-serif;font-size:1.25rem;font-weight:700;margin:0 0 0.75rem;color:hsl(0,0%,98%);">Academias de Bairro</h3>
+          <p style="color:hsl(210,15%,65%);font-size:0.875rem;line-height:1.6;margin:0;">Academias tradicionais e familiares que lutam para se manter competitivas com a chegada das low costs.</p>
+        </div>
+        <div style="background:hsl(216,45%,14%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:2rem;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+          <div style="width:3.5rem;height:3.5rem;border-radius:9999px;background:hsl(145,60%,42%,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(145,60%,48%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path></svg>
+          </div>
+          <h3 style="font-family:Oswald,sans-serif;font-size:1.25rem;font-weight:700;margin:0 0 0.75rem;color:hsl(0,0%,98%);">Academias Full Service</h3>
+          <p style="color:hsl(210,15%,65%);font-size:0.875rem;line-height:1.6;margin:0;">Academias de múltiplos serviços com dificuldade de adquirir novos alunos e expandir a operação.</p>
+        </div>
+        <div style="background:hsl(216,45%,14%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:2rem;text-align:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+          <div style="width:3.5rem;height:3.5rem;border-radius:9999px;background:hsl(145,60%,42%,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(145,60%,48%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <h3 style="font-family:Oswald,sans-serif;font-size:1.25rem;font-weight:700;margin:0 0 0.75rem;color:hsl(0,0%,98%);">Studios de Personal</h3>
+          <p style="color:hsl(210,15%,65%);font-size:0.875rem;line-height:1.6;margin:0;">Profissionais que investiram em um espaço próprio e não conseguem ter o lucro real que merecem.</p>
+        </div>
+      </div>
+      <div style="background:hsl(0,84%,60%,0.1);border:1px solid hsl(0,84%,60%,0.3);border-radius:0.75rem;padding:1.5rem;text-align:center;max-width:42rem;margin:0 auto;">
+        <p style="margin:0;color:hsl(0,0%,98%);font-family:Oswald,sans-serif;font-weight:600;font-size:1.125rem;">❌ NÃO é para donos de academia que querem se manter estagnados fazendo mais do mesmo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENTOR -->
+  <section style="padding:5rem 1.25rem;background:hsl(216,45%,14%);">
+    <div style="max-width:64rem;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:3rem;align-items:center;">
+      <div style="position:relative;">
+        <div style="position:relative;border-radius:1rem;overflow:hidden;box-shadow:0 0 50px hsl(145,60%,42%,0.3);">
+          <img src="/eduardo-lustosa.webp" alt="Eduardo Lustosa" width="500" height="625" loading="lazy" decoding="async" style="width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center top;background:linear-gradient(160deg,hsl(216,40%,20%),hsl(216,45%,14%));display:block;">
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,hsl(216,50%,10%,0.8),transparent 55%);"></div>
+        </div>
+      </div>
+      <div>
+        <p style="color:hsl(145,60%,48%);font-family:Oswald,sans-serif;font-weight:600;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.5rem;">Quem vai conduzir</p>
+        <h2 style="font-family:Oswald,sans-serif;font-size:clamp(1.875rem,3.5vw,2.25rem);font-weight:700;margin:0 0 1.5rem;">Eduardo <span style="color:hsl(45,90%,55%);">Lustosa</span></h2>
+        <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:2rem;">
+          <sc-for list="{{ credentials }}" as="cred" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <div style="flex-shrink:0;width:2.25rem;height:2.25rem;border-radius:0.5rem;background:hsl(145,60%,42%,0.15);display:flex;align-items:center;justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(145,60%,48%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+              </div>
+              <span style="color:hsl(0,0%,98%);font-size:0.9rem;font-weight:500;">{{ cred }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <p style="color:hsl(210,15%,65%);font-size:0.9rem;line-height:1.6;margin:0 0 2rem;">Consultor de dezenas de academias pelo Brasil, Eduardo criou um método prático e replicável que transforma a operação de qualquer academia — independente do tamanho ou localização.</p>
+        <button sc-camel-on-click="{{ openModal }}" style="display:inline-block;background:hsl(145,60%,42%);color:#fff;font-family:Oswald,sans-serif;font-weight:700;font-size:1rem;padding:1rem 2rem;border:none;border-radius:0.75rem;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;animation:pulseGlow 2s ease-in-out infinite;">Garantir Minha Vaga Agora</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CADASTRO -->
+  <section id="cadastro" style="padding:5rem 1.25rem;position:relative;overflow:hidden;background:linear-gradient(135deg,hsl(216,50%,8%) 0%,hsl(216,50%,14%) 50%,hsl(216,45%,10%) 100%);">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;border-radius:9999px;background:hsl(145,60%,42%,0.05);filter:blur(40px);will-change:auto;"></div>
+    <div style="max-width:42rem;margin:0 auto;position:relative;z-index:10;text-align:center;">
+      <h2 style="font-family:Oswald,sans-serif;font-size:clamp(1.875rem,3.5vw,2.25rem);font-weight:700;margin:0 0 1rem;">Sua academia merece <span style="color:hsl(45,90%,55%);">resultados reais</span></h2>
+      <p style="color:hsl(210,15%,65%);font-size:1.125rem;margin:0 auto 2.5rem;max-width:32rem;">Cadastre-se agora e participe da reunião exclusiva com Eduardo Lustosa. Vagas limitadas.</p>
+      <div style="background:hsl(216,45%,14%);border:1px solid hsl(216,30%,22%);border-radius:1rem;padding:2.5rem;box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+        <form style="display:flex;flex-direction:column;gap:1rem;" sc-camel-on-submit="{{ onSubmit }}">
+          <input type="text" name="nome" placeholder="Seu nome completo" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;color:hsl(0,0%,98%);font-size:1rem;">
+          <input type="tel" name="telefone" placeholder="Seu WhatsApp (com DDD)*" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;color:hsl(0,0%,98%);font-size:1rem;">
+          <input type="email" name="email" placeholder="Seu melhor e-mail*" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;color:hsl(0,0%,98%);font-size:1rem;">
+          <div style="position:relative;">
+            <sc-raw-select name="faturamento" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 3rem 1rem 1.25rem;color:hsl(210,15%,65%);font-size:1rem;appearance:none;cursor:pointer;">
+              <option value="" disabled="" selected="">Informe aqui sua faixa de faturamento mensal*</option>
+              <option value="Até 20 mil">Até 20 mil</option>
+              <option value="Entre R$20.000 a R$30.000">Entre R$20.000 a R$30.000</option>
+              <option value="Entre R$30.000 a R$40.000">Entre R$30.000 a R$40.000</option>
+              <option value="50k a 150k">50k a 150k</option>
+              <option value="150k a 500k">150k a 500k</option>
+            </sc-raw-select>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(210,15%,65%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+          <div style="position:relative;">
+            <sc-raw-select name="area" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 3rem 1rem 1.25rem;color:hsl(210,15%,65%);font-size:1rem;appearance:none;cursor:pointer;">
+              <option value="" disabled="" selected="">Área de atuação*</option>
+              <option value="Sou Academia de bairro">Sou Academia de bairro</option>
+              <option value="Studio de personal trainer">Studio de personal trainer</option>
+              <option value="Box de crossfit">Box de crossfit</option>
+              <option value="Sou Academia de rede">Sou Academia de rede</option>
+              <option value="Nenhuma das opções acima">Nenhuma das opções acima</option>
+            </sc-raw-select>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(210,15%,65%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+          <button type="submit" style="width:100%;background:hsl(145,60%,42%);color:#fff;font-family:Oswald,sans-serif;font-weight:700;font-size:1.125rem;padding:1.15rem;border:none;border-radius:0.75rem;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;animation:pulseGlow 2s ease-in-out infinite;">Garantir Minha Vaga — É Gratuito!</button>
+        </form>
+        <p style="color:hsl(210,15%,65%);font-size:0.75rem;margin:1rem 0 0;">🔒 Seus dados estão seguros. Não enviamos spam.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer style="padding:2rem 1.25rem;background:hsl(216,45%,14%);border-top:1px solid hsl(216,30%,22%);">
+    <div style="max-width:64rem;margin:0 auto;text-align:center;">
+      <p style="color:hsl(210,15%,65%);font-size:0.875rem;margin:0;">Copyrights 2025 | Todos os direitos reservados. Eduardo Lustosa.</p>
+    </div>
+  </footer>
+
+  <!-- MODAL -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div sc-camel-on-click="{{ closeModal }}" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:1.25rem;">
+      <div sc-camel-on-click="{{ stop }}" style="position:relative;width:100%;max-width:32rem;max-height:92vh;overflow-y:auto;background:hsl(216,45%,14%);border:1px solid hsl(216,30%,22%);border-radius:1rem;padding:2.5rem;box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+        <button sc-camel-on-click="{{ closeModal }}" aria-label="Fechar" style="position:absolute;top:1rem;right:1rem;width:2.25rem;height:2.25rem;display:flex;align-items:center;justify-content:center;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:9999px;color:hsl(0,0%,98%);cursor:pointer;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>
+        <h2 style="font-family:Oswald,sans-serif;font-size:1.5rem;font-weight:700;margin:0 0 0.5rem;text-align:center;">Garanta sua <span style="color:hsl(45,90%,55%);">vaga gratuita</span></h2>
+        <p style="color:hsl(210,15%,65%);font-size:0.9rem;margin:0 0 1.5rem;text-align:center;">Preencha os dados e participe da reunião exclusiva.</p>
+        <form style="display:flex;flex-direction:column;gap:1rem;" sc-camel-on-submit="{{ onSubmit }}">
+          <input type="text" name="nome" placeholder="Seu nome completo" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;color:hsl(0,0%,98%);font-size:1rem;">
+          <input type="tel" name="telefone" placeholder="Seu WhatsApp (com DDD)*" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;color:hsl(0,0%,98%);font-size:1rem;">
+          <input type="email" name="email" placeholder="Seu melhor e-mail*" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 1.25rem;color:hsl(0,0%,98%);font-size:1rem;">
+          <div style="position:relative;">
+            <sc-raw-select name="faturamento" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 3rem 1rem 1.25rem;color:hsl(210,15%,65%);font-size:1rem;appearance:none;cursor:pointer;">
+              <option value="" disabled="" selected="">Informe aqui sua faixa de faturamento mensal*</option>
+              <option value="Até 20 mil">Até 20 mil</option>
+              <option value="Entre R$20.000 a R$30.000">Entre R$20.000 a R$30.000</option>
+              <option value="Entre R$30.000 a R$40.000">Entre R$30.000 a R$40.000</option>
+              <option value="50k a 150k">50k a 150k</option>
+              <option value="150k a 500k">150k a 500k</option>
+            </sc-raw-select>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(210,15%,65%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+          <div style="position:relative;">
+            <sc-raw-select name="area" required="" style="width:100%;background:hsl(216,30%,18%);border:1px solid hsl(216,30%,22%);border-radius:0.75rem;padding:1rem 3rem 1rem 1.25rem;color:hsl(210,15%,65%);font-size:1rem;appearance:none;cursor:pointer;">
+              <option value="" disabled="" selected="">Área de atuação*</option>
+              <option value="Sou Academia de bairro">Sou Academia de bairro</option>
+              <option value="Studio de personal trainer">Studio de personal trainer</option>
+              <option value="Box de crossfit">Box de crossfit</option>
+              <option value="Sou Academia de rede">Sou Academia de rede</option>
+              <option value="Nenhuma das opções acima">Nenhuma das opções acima</option>
+            </sc-raw-select>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" sc-camel-view-box="0 0 24 24" fill="none" stroke="hsl(210,15%,65%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="m6 9 6 6 6-6"></path></svg>
+          </div>
+          <button type="submit" style="width:100%;background:hsl(145,60%,42%);color:#fff;font-family:Oswald,sans-serif;font-weight:700;font-size:1.125rem;padding:1.15rem;border:none;border-radius:0.75rem;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;">Garantir Minha Vaga — É Gratuito!</button>
+        </form>
+        <p style="color:hsl(210,15%,65%);font-size:0.75rem;margin:1rem 0 0;text-align:center;">🔒 Seus dados estão seguros. Não enviamos spam.</p>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="">
+class Component extends DCLogic {
+  state = { modalOpen: false };
+
+  // ⬇️ COLE AQUI a URL do seu Web App do Google Apps Script (termina em /exec)
+  SHEET_ENDPOINT = "https://script.google.com/macros/s/AKfycby1HihH4bdjK0neOFe1yQrXl1Fa9-g_islfDl-c8hl9OUqQxAZzH5TExbPKsWKlAPUU/exec";
+
+  // Para onde o lead é redirecionado após o envio
+  REDIRECT_URL = "https://gest-ofitnessbrasil-workshopredirec.vercel.app/workshop0906.html";
+
+  utm = {};
+  componentDidMount() {
+    const p = new URLSearchParams(location.search);
+    this.utm = {
+      utm_source: p.get("utm_source") || "",
+      utm_medium: p.get("utm_medium") || "",
+      utm_campaign: p.get("utm_campaign") || "",
+      utm_content: p.get("utm_content") || "",
+      utm_term: p.get("utm_term") || "",
+      fbclid: p.get("fbclid") || "",
+    };
+  }
+
+  renderVals() {
+    return {
+      modalOpen: this.state.modalOpen,
+      openModal: (e) => { if (e) e.preventDefault(); this.setState({ modalOpen: true }); },
+      closeModal: () => this.setState({ modalOpen: false }),
+      stop: (e) => e.stopPropagation(),
+      pains: [
+        "Sem perder alunos para a concorrência",
+        "Sem dar desconto para fechar matrículas",
+        "Sem depender da sazonalidade para o mês ser bom",
+        "Sem precisar de um time comercial grande",
+        "Sem fazer promoções ou eventos sem sentido",
+        "Sem gastar rios de dinheiro em tráfego pago",
+      ],
+      credentials: [
+        "Proprietário de 3 Academias",
+        "Mais de 7.000 alunos ativos",
+        "3x premiado pelo Sebrae",
+        "Referência nacional em gestão fitness",
+        "Palestrante nos maiores eventos Fitness do Brasil",
+        "Premiado pela Ultra Academias em 2024 e 2025",
+      ],
+      onSubmit: (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const telefone = f.telefone ? f.telefone.value.trim() : "";
+        const email = f.email ? f.email.value.trim() : "";
+        const faturamento = f.faturamento ? f.faturamento.value : "";
+        const area = f.area ? f.area.value : "";
+        const camposObrigatorios = [
+          [f.telefone, telefone],
+          [f.email, email],
+          [f.faturamento, faturamento],
+          [f.area, area],
+        ];
+        let primeiroInvalido = null;
+        camposObrigatorios.forEach(function (par) {
+          var el = par[0];
+          var val = par[1];
+          if (!el) return;
+          if (!val) {
+            el.style.border = "2px solid #ef4444";
+            if (!primeiroInvalido) primeiroInvalido = el;
+          } else {
+            el.style.border = "";
+          }
+        });
+        var msgEl = f.querySelector(".dc-validation-msg");
+        if (primeiroInvalido) {
+          if (!msgEl) {
+            msgEl = document.createElement("div");
+            msgEl.className = "dc-validation-msg";
+            msgEl.style.color = "#ef4444";
+            msgEl.style.fontSize = "0.875rem";
+            msgEl.style.marginTop = "-0.5rem";
+            var btn = f.querySelector('button[type="submit"]');
+            if (btn) f.insertBefore(msgEl, btn);
+            else f.appendChild(msgEl);
+          }
+          msgEl.textContent = "Preencha todos os campos obrigatorios (WhatsApp, e-mail, faturamento e area de atuacao) antes de continuar.";
+          primeiroInvalido.focus();
+          return;
+        } else if (msgEl) {
+          msgEl.remove();
+        }
+        const data = {
+          nome: f.nome ? f.nome.value : "",
+          telefone: f.telefone ? f.telefone.value : "",
+          email: f.email ? f.email.value : "",
+          faturamento: f.faturamento ? f.faturamento.value : "",
+          area: f.area ? f.area.value : "",
+          ...this.utm,
+          origem_url: location.href,
+          data_hora: new Date().toLocaleString("pt-BR"),
+        };
+        if (window.fbq) fbq("track", "Lead", { content_name: "Cadastro Reuniao Academia" });
+        if (this.SHEET_ENDPOINT) {
+          var body = new URLSearchParams(data).toString();
+          var sent = false;
+          if (navigator.sendBeacon) {
+            sent = navigator.sendBeacon(
+              this.SHEET_ENDPOINT,
+              new Blob([body], { type: "application/x-www-form-urlencoded" })
+            );
+          }
+          if (!sent) {
+            fetch(this.SHEET_ENDPOINT, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: body,
+              keepalive: true,
+            }).catch(() => {});
+          }
+        }
+        if (this.REDIRECT_URL) {
+          window.location.href = this.REDIRECT_URL;
+        } else {
+          f.reset();
+          this.setState({ modalOpen: false });
+        }
+      },
+    };
+  }
+}
+</script>
+
+
+</body></html>
