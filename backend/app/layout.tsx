@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "GYMPLUS",
-  description: "API interna do GYMPLUS (CRM/operações)",
+  title: "CRM GFB",
+  description: "API interna do CRM GFB — Gestão Fitness Brasil (CRM/operações)",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
