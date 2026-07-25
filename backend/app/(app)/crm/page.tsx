@@ -103,18 +103,6 @@ export default function CrmPage() {
     loadDeals();
   }
 
-  async function moveStage(deal: Deal, delta: number, e: React.MouseEvent) {
-    e.stopPropagation();
-    const nextStage = Math.min(6, Math.max(0, deal.stage + delta));
-    if (nextStage === deal.stage) return;
-    await fetch(`/api/deals/${deal.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage: nextStage }),
-    });
-    loadDeals();
-  }
-
   async function distribute() {
     setDistributing(true);
     const unassigned = deals.filter((d) => !d.assigned_to).map((d) => d.id);
@@ -225,51 +213,51 @@ export default function CrmPage() {
                       style={{ cursor: "pointer", padding: 10 }}
                       onClick={() => router.push(`/crm/${deal.id}`)}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
-                        <div style={{ fontWeight: 700, fontSize: 12.5, lineHeight: 1.3 }}>{deal.person_name}</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "#0ea5e9", fontWeight: 700 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0ea5e9", display: "inline-block" }} />
+                          Em andamento
+                        </span>
+                        <span className="msym" style={{ fontSize: 14, color: "var(--text-faint)" }}>info</span>
+                      </div>
+
+                      <div style={{ fontWeight: 700, fontSize: 12.5, lineHeight: 1.3, marginBottom: 6 }}>{deal.person_name}</div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                         {deal.qualification ? (
-                          <span style={{ display: "flex", alignItems: "center", gap: 1, color: "#f59e0b", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 1, color: "#f59e0b", fontSize: 11, fontWeight: 700 }}>
                             <span className="msym" style={{ fontSize: 13 }}>star</span>
                             {deal.qualification}
                           </span>
                         ) : null}
+                        <span className="msym" style={{ fontSize: 14, color: "var(--text-faint)" }}>person</span>
+                        {deal.value ? <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtBRL(deal.value)}</span> : null}
                       </div>
-                      {deal.value ? <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700 }}>{fmtBRL(deal.value)}</div> : null}
+
                       {deal.task_desc && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, marginTop: 6, color: "var(--text-faint)" }}>
-                          <span className="msym" style={{ fontSize: 13 }}>{TASK_ICON[deal.task_type ?? ""] ?? "task_alt"}</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 11,
+                            marginBottom: 6,
+                            padding: "5px 8px",
+                            borderRadius: 8,
+                            background: "var(--surface-muted)",
+                            border: "1px solid var(--border)",
+                          }}
+                        >
+                          <span className="msym" style={{ fontSize: 13, color: "var(--accent-darker)" }}>{TASK_ICON[deal.task_type ?? ""] ?? "task_alt"}</span>
                           <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal.task_desc}</span>
                         </div>
                       )}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                        {deal.assignee ? (
-                          <span
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: "50%",
-                              background: deal.assignee.color ?? "var(--accent)",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 7,
-                              fontWeight: 700,
-                              color: "#fff",
-                              flexShrink: 0,
-                            }}
-                            title={deal.assignee.name}
-                          >
-                            {deal.assignee.initials ?? deal.assignee.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Sem dono</span>
-                        )}
-                        <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{fmtDate(deal.task_date)}</span>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-faint)" }}>
+                        <span className="msym" style={{ fontSize: 13 }}>badge</span>
+                        {deal.assignee ? deal.assignee.name : "Sem dono"}
                       </div>
-                      <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                        <button onClick={(e) => moveStage(deal, -1, e)} style={miniBtn}>◀</button>
-                        <button onClick={(e) => moveStage(deal, 1, e)} style={miniBtn}>▶</button>
-                      </div>
+                      <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDate(deal.task_date)}</div>
                     </div>
                   ))}
                 </div>
@@ -345,13 +333,4 @@ const selectStyle: React.CSSProperties = {
   padding: "7px 10px",
   fontSize: 12,
   background: "#fff",
-};
-
-const miniBtn: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 6,
-  background: "#fff",
-  fontSize: 11,
-  padding: "2px 6px",
-  flex: 1,
 };
