@@ -52,39 +52,40 @@ export default function LoginPage() {
       style={{
         minHeight: "100vh",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         background: "var(--bg-dark)",
         padding: 24,
       }}
     >
-      <form onSubmit={handleSubmit} className="card" style={{ width: 400, background: "#fff" }}>
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <div
-            style={{
-              display: "inline-flex",
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: "var(--accent)",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 12,
-            }}
-          >
-            <span className="msym" style={{ color: "#06140d", fontSize: 30 }}>
-              fitness_center
-            </span>
-          </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>
-            GYM<span style={{ color: "var(--accent)" }}>PLUS</span>
-          </h1>
-          <p style={{ color: "var(--text-faint)", fontSize: 13, margin: "4px 0 0" }}>
-            Acessar plataforma
-          </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 11,
+            background: "var(--accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <span className="msym" style={{ color: "#06140d", fontSize: 24 }}>open_in_full</span>
         </div>
+        <span style={{ fontSize: 22, fontWeight: 800, color: "#fff" }}>
+          CRM<span style={{ color: "var(--accent)" }}>GFB</span>
+        </span>
+      </div>
+      <p style={{ color: "var(--text-faint)", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", marginBottom: 24 }}>
+        TROPA DE ELITE DE VENDAS!
+      </p>
 
-        <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>Selecione seu perfil de acesso</p>
+      <form onSubmit={handleSubmit} className="card" style={{ width: 400, background: "#fff" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Acessar plataforma</h1>
+        <p style={{ color: "var(--text-faint)", fontSize: 13, margin: "4px 0 20px" }}>
+          Selecione seu perfil de acesso
+        </p>
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {ROLES.map((role) => {
             const active = selectedRole === role.id;

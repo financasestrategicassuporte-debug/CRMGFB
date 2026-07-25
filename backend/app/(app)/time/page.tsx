@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Banner } from "../banner";
 
 type Member = {
   id: string;
@@ -15,11 +16,18 @@ type Member = {
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", sdr: "SDR", closer: "Closer" };
 
 export default function TimePage() {
+  const [role, setRole] = useState("admin");
   const [team, setTeam] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "sdr" as Member["role"], phone: "" });
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setRole(d.profile?.role ?? "admin"));
+  }, []);
 
   async function loadTeam() {
     setLoading(true);
@@ -61,13 +69,30 @@ export default function TimePage() {
   const closers = team.filter((t) => t.role === "closer").length;
 
   return (
+    <div>
+      <Banner
+        title="Time"
+        subtitle="Cadastre e gerencie os SDRs e Closers da operação"
+        icon="badge"
+        role={role}
+      />
     <div style={{ padding: 32 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Time</h1>
-          <p style={{ color: "var(--text-faint)", margin: "4px 0 0" }}>
-            {sdrs} SDRs · {closers} Closers
-          </p>
+        <div style={{ display: "flex", gap: 12 }}>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 18px" }}>
+            <span className="msym" style={{ color: "var(--accent-darker)" }}>call</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{sdrs}</div>
+              <div style={{ color: "var(--text-faint)", fontSize: 11 }}>SDRs</div>
+            </div>
+          </div>
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 18px" }}>
+            <span className="msym" style={{ color: "var(--accent-darker)" }}>handshake</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{closers}</div>
+              <div style={{ color: "var(--text-faint)", fontSize: 11 }}>Closers</div>
+            </div>
+          </div>
         </div>
         <button className="btn-primary" onClick={() => setShowForm(true)}>
           + Cadastrar membro
@@ -137,6 +162,7 @@ export default function TimePage() {
           </form>
         </div>
       )}
+    </div>
     </div>
   );
 }

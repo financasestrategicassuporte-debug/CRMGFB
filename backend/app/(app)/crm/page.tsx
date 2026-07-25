@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Banner } from "../banner";
 
 type Deal = {
   id: string;
@@ -30,6 +31,7 @@ function fmtBRL(v: number | null) {
 }
 
 export default function CrmPage() {
+  const [role, setRole] = useState("admin");
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +39,12 @@ export default function CrmPage() {
   const [notes, setNotes] = useState<{ id: string; body: string; created_at: string }[]>([]);
   const [noteText, setNoteText] = useState("");
   const [newDeal, setNewDeal] = useState({ person_name: "", phone: "", pipeline: "quente" as "quente" | "frio", value: "" });
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setRole(d.profile?.role ?? "admin"));
+  }, []);
 
   async function loadDeals() {
     setLoading(true);
@@ -105,14 +113,15 @@ export default function CrmPage() {
   }));
 
   return (
+    <div>
+      <Banner
+        title="Meu CRM"
+        subtitle="Seus leads distribuídos, do primeiro contato ao agendamento"
+        icon="contacts"
+        role={role}
+      />
     <div style={{ padding: 32 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>CRM</h1>
-          <p style={{ color: "var(--text-faint)", margin: "4px 0 0" }}>
-            Negociações do primeiro contato ao fechamento
-          </p>
-        </div>
+      <header style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 20 }}>
         <button className="btn-primary" onClick={() => setShowForm(true)}>
           + Nova negociação
         </button>
@@ -228,6 +237,7 @@ export default function CrmPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
