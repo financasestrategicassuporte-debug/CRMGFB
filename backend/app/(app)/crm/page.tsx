@@ -137,51 +137,52 @@ export default function CrmPage() {
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <button
             onClick={() => setPipeline("quente")}
-            className="card"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 6,
               padding: "7px 12px",
-              background: pipeline === "quente" ? "var(--bg-dark)" : "#fff",
-              color: pipeline === "quente" ? "#fff" : "var(--text)",
+              borderRadius: 10,
+              border: `1px solid ${pipeline === "quente" ? "var(--accent)" : "var(--border)"}`,
+              background: "#fff",
+              color: "var(--text)",
               fontSize: 13,
+              fontWeight: 700,
             }}
           >
-            <span className="msym" style={{ fontSize: 15, color: pipeline === "quente" ? "#f97316" : "var(--text-faint)" }}>local_fire_department</span>
+            <span className="msym" style={{ fontSize: 15, color: "#f97316" }}>local_fire_department</span>
             Funil Quente
           </button>
           <button
             onClick={() => setPipeline("frio")}
-            className="card"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 6,
               padding: "7px 12px",
-              background: pipeline === "frio" ? "var(--bg-dark)" : "#fff",
-              color: pipeline === "frio" ? "#fff" : "var(--text)",
+              borderRadius: 10,
+              border: `1px solid ${pipeline === "frio" ? "var(--accent)" : "var(--border)"}`,
+              background: "#fff",
+              color: "var(--text)",
               fontSize: 13,
+              fontWeight: 700,
             }}
           >
-            <span className="msym" style={{ fontSize: 15, color: pipeline === "frio" ? "#38bdf8" : "var(--text-faint)" }}>ac_unit</span>
+            <span className="msym" style={{ fontSize: 15, color: "#38bdf8" }}>ac_unit</span>
             Funil Frio
           </button>
         </div>
 
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>filter_alt</span>
-            {role === "admin" && (
-              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)} style={selectStyle}>
-                <option value="all">Todos os SDRs e Closers</option>
-                {team.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            )}
+        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>
+              Funil {pipeline === "quente" ? "Quente" : "Frio"} · {pipeline === "quente" ? "Formulário de Consultoria" : "Prospecção Ativa"}
+            </div>
+            <div style={{ color: "var(--text-faint)", fontSize: 12 }}>
+              {pipeline === "quente"
+                ? "Leads que preencheram o formulário com dados da academia"
+                : "Leads buscados ativamente pelo time de SDRs"}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {role === "admin" && (
@@ -196,14 +197,48 @@ export default function CrmPage() {
           </div>
         </header>
 
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 700, color: "var(--accent-darker)" }}>
+              <span className="msym" style={{ fontSize: 16 }}>bolt</span>
+              IA para Negociações ·
+            </span>
+            {role === "admin" ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span className="msym" style={{ fontSize: 16, color: "var(--text-faint)" }}>filter_alt</span>
+                <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)} style={selectStyle}>
+                  <option value="all">Todos os SDRs e Closers</option>
+                  {team.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            ) : (
+              <span style={{ color: "var(--text-faint)" }}>Todos os SDRs e Closers</span>
+            )}
+          </div>
+          <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+            Negociações distribuídas automaticamente · clique para abrir
+          </span>
+        </div>
+
         {loading ? (
           <p>Carregando…</p>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 10, overflowX: "auto" }}>
-            {columns.map((col) => (
+            {columns.map((col) => {
+              const total = col.deals.reduce((sum, d) => sum + (d.value ?? 0), 0);
+              return (
               <div key={col.stage} style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={col.label}>
-                  {col.label} <span style={{ color: "var(--text-faint)" }}>({col.deals.length})</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 4 }}>
+                  <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={col.label}>
+                    {col.label} <span style={{ color: "var(--text-faint)", fontWeight: 400 }}>({col.deals.length})</span>
+                  </span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: total > 0 ? "var(--accent-darker)" : "var(--text-faint)", flexShrink: 0 }}>
+                    {fmtBRL(total)}
+                  </span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {col.deals.map((deal) => (
@@ -262,7 +297,8 @@ export default function CrmPage() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
