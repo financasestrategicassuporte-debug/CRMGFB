@@ -2,10 +2,16 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { NavLink } from "./nav-link";
 
-const NAV = [
+const NAV_ADMIN = [
   { href: "/dashboard", icon: "grid_view", label: "Dashboard" },
-  { href: "/crm", icon: "contacts", label: "CRM" },
+  { href: "/crm", icon: "contacts", label: "CRM · Todos" },
+  { href: "/time", icon: "badge", label: "Time" },
+  { href: "/clientes", icon: "groups", label: "Clientes" },
 ];
+
+// SDR/Closer só veem o próprio CRM por enquanto (Performance/Chats/
+// Comissões específicos deles entram numa próxima fase).
+const NAV_TEAM = [{ href: "/crm", icon: "contacts", label: "Meu CRM" }];
 
 /** Sidebar comum às páginas logadas — mesmo visual do mockup original
  * (logo, grupos de navegação, rodapé com o usuário). Redireciona pra
@@ -14,6 +20,8 @@ const NAV = [
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, profile } = await getCurrentProfile();
   if (!user) redirect("/login");
+
+  const nav = profile?.role === "admin" ? NAV_ADMIN : NAV_TEAM;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -35,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
           ))}
         </nav>

@@ -40,5 +40,5 @@ export const config = {
   // o cookie de sessão do Supabase renovado a cada navegação — quem decide
   // redirecionar para /login sem sessão é o próprio Server Component do
   // layout (app/(app)/layout.tsx), não este middleware.
-  matcher: ["/api/:path*", "/dashboard/:path*", "/crm/:path*"],
+  matcher: ["/api/:path*", "/dashboard/:path*", "/crm/:path*", "/time/:path*", "/clientes/:path*"],
 };

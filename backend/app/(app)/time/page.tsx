@@ -1,0 +1,166 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Member = {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "sdr" | "closer";
+  phone: string | null;
+  initials: string | null;
+  active: boolean;
+};
+
+const ROLE_LABEL: Record<string, string> = { admin: "Admin", sdr: "SDR", closer: "Closer" };
+
+export default function TimePage() {
+  const [team, setTeam] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "sdr" as Member["role"], phone: "" });
+
+  async function loadTeam() {
+    setLoading(true);
+    const res = await fetch("/api/team");
+    const data = await res.json();
+    setTeam(data.team ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadTeam();
+  }, []);
+
+  async function createMember(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await fetch("/api/team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Não foi possível cadastrar o membro");
+      return;
+    }
+    setForm({ name: "", email: "", password: "", role: "sdr", phone: "" });
+    setShowForm(false);
+    loadTeam();
+  }
+
+  async function removeMember(id: string) {
+    if (!confirm("Remover este membro do time?")) return;
+    await fetch(`/api/team/${id}`, { method: "DELETE" });
+    loadTeam();
+  }
+
+  const sdrs = team.filter((t) => t.role === "sdr").length;
+  const closers = team.filter((t) => t.role === "closer").length;
+
+  return (
+    <div style={{ padding: 32 }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Time</h1>
+          <p style={{ color: "var(--text-faint)", margin: "4px 0 0" }}>
+            {sdrs} SDRs · {closers} Closers
+          </p>
+        </div>
+        <button className="btn-primary" onClick={() => setShowForm(true)}>
+          + Cadastrar membro
+        </button>
+      </header>
+
+      {loading ? (
+        <p>Carregando…</p>
+      ) : (
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--surface-muted)", textAlign: "left" }}>
+                <th style={thStyle}>Membro</th>
+                <th style={thStyle}>Função</th>
+                <th style={thStyle}>E-mail</th>
+                <th style={thStyle}>Telefone</th>
+                <th style={thStyle}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {team.map((member) => (
+                <tr key={member.id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={tdStyle}>{member.name}</td>
+                  <td style={tdStyle}>{ROLE_LABEL[member.role]}</td>
+                  <td style={tdStyle}>{member.email}</td>
+                  <td style={tdStyle}>{member.phone}</td>
+                  <td style={tdStyle}>
+                    <button onClick={() => removeMember(member.id)} style={{ border: "none", background: "none", color: "var(--status-late-fg)" }}>
+                      Remover
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showForm && (
+        <div style={overlayStyle}>
+          <form onSubmit={createMember} className="card" style={{ width: 380, background: "#fff" }}>
+            <h2 style={{ marginTop: 0, fontSize: 16 }}>Cadastrar membro</h2>
+            <label style={labelStyle}>Nome</label>
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            <label style={labelStyle}>E-mail</label>
+            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inputStyle} />
+            <label style={labelStyle}>Senha inicial</label>
+            <input required minLength={8} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={inputStyle} />
+            <label style={labelStyle}>Função</label>
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Member["role"] })} style={inputStyle}>
+              <option value="sdr">SDR</option>
+              <option value="closer">Closer</option>
+              <option value="admin">Admin</option>
+            </select>
+            <label style={labelStyle}>Telefone</label>
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={{ ...inputStyle, marginBottom: 18 }} />
+            {error && <p style={{ color: "var(--status-late-fg)", fontSize: 13 }}>{error}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setShowForm(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                Cadastrar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const thStyle: React.CSSProperties = { padding: "10px 16px", fontSize: 12, color: "var(--text-faint)", fontWeight: 700 };
+const tdStyle: React.CSSProperties = { padding: "10px 16px", fontSize: 14 };
+
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.4)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 50,
+};
+
+const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, marginTop: 10 };
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  padding: "10px 12px",
+  fontSize: 14,
+  marginBottom: 6,
+};
