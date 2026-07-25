@@ -14,7 +14,24 @@ const NAV_GROUPS_ADMIN = [
     items: [
       { href: "/dashboard", icon: "grid_view", label: "Dashboard" },
       { href: "/crm", icon: "contacts", label: "CRM · Todos" },
+      { href: "/automacoes", icon: "bolt", label: "Automações" },
     ],
+  },
+  {
+    label: "SISTEMA OPERACIONAL",
+    items: [
+      { href: "/gargalos", icon: "troubleshoot", label: "Gargalos & Decisão" },
+      { href: "/funis", icon: "filter_alt", label: "Funis por Produto" },
+      { href: "/performance/sdr", icon: "call", label: "Performance SDR" },
+      { href: "/performance/closer", icon: "handshake", label: "Performance Closer" },
+      { href: "/produtos", icon: "category", label: "Dashboard Produtos" },
+      { href: "/chats", icon: "forum", label: "Chats · IA" },
+      { href: "/comissoes", icon: "savings", label: "Comissões" },
+    ],
+  },
+  {
+    label: "INTELIGÊNCIA DE CLIENTES",
+    items: [{ href: "/rfv", icon: "insights", label: "Matriz RFV" }],
   },
   {
     label: "EQUIPE",
