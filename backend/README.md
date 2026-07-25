@@ -144,16 +144,31 @@ normalmente. Configure as env vars reais quando tiver as credenciais; não
    - `SUPABASE_SERVICE_ROLE_KEY` = a service role key (pegue no Supabase Dashboard, não commitar)
 3. Deploy. A Vercel builda na nuvem — não depende de espaço em disco local.
 
-## Conectando o frontend existente
+## Dashboard (app/(app)/...)
 
-O frontend atual (`index.html`, `index-corrigido.html`,
-`site-otimizado/`) hoje não faz nenhuma chamada de API — todos os dados
-são mock em memória. Para ligar ao backend real, troque os arrays mock por
-`fetch('/api/...')` (ou a URL completa do deploy da Vercel, se o frontend
-for hospedado separadamente) nos pontos correspondentes: login,
-listagem/edição de clientes, funil de CRM, automações, etc. O endpoint
-`POST /api/leads` já está pronto para receber o formulário da landing page
-(`site-otimizado/index.html`) sem exigir login.
+Existe um dashboard real (não mockado) dentro do próprio projeto Next.js,
+em `/login` → `/dashboard` → `/crm`. Ele foi construído usando o mockup
+visual do GYMPLUS (HTML enviado pelo time) como referência de cores/
+layout — mas com formulários e navegação de verdade, direto contra os
+endpoints de `/api/*` (mesmo domínio, então a sessão via cookie do
+Supabase funciona sem CORS). Cobre hoje: login, Dashboard Geral e CRM de
+Deals (criar, mover de estágio, anotações). As demais telas do mockup
+(Time, Clientes/Playbook, Automações, Performance, Funis, Gargalos,
+Chats·IA, Matriz RFV, Comissões) ainda não foram portadas — entram em
+rodadas seguintes.
+
+`app/(app)/layout.tsx` é o guarda de sessão das páginas logadas (redireciona
+para `/login` sem sessão, mesmo padrão do `middleware.ts` que já protegia
+`/api/*`). Estilo/paleta em `app/globals.css`.
+
+## Frontend estático antigo (não relacionado ao GYMPLUS)
+
+`index.html`, `index-corrigido.html` e `site-otimizado/` na raiz do
+repositório são de uma landing page separada (pré-existente, sem relação
+com o GYMPLUS) — não fazem chamada de API nenhuma. O endpoint
+`POST /api/leads` está pronto para receber o formulário dessa landing
+page (`site-otimizado/index.html`) sem exigir login, caso ela volte a
+ser usada.
 
 ## Observação de segurança pendente
 

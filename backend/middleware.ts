@@ -36,5 +36,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*"],
+  // Também roda nas páginas logadas (/dashboard, /crm, ...) só para manter
+  // o cookie de sessão do Supabase renovado a cada navegação — quem decide
+  // redirecionar para /login sem sessão é o próprio Server Component do
+  // layout (app/(app)/layout.tsx), não este middleware.
+  matcher: ["/api/:path*", "/dashboard/:path*", "/crm/:path*"],
 };

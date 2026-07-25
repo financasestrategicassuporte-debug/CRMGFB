@@ -1,0 +1,97 @@
+/* Paleta/tipografia extraída do mockup visual do GYMPLUS (ver plano em
+ * .claude/plans) — mesmas cores/fontes, reconstruído como app real. */
+
+:root {
+  --bg-dark: #0d2a20;
+  --text: #16211c;
+  --text-muted: #6f9585;
+  --text-faint: #a3b0a8;
+  --border: #d5ddd8;
+  --accent: #22c55e;
+  --accent-dark: #16a34a;
+  --accent-darker: #15803d;
+  --status-ok-bg: #dcfce7;
+  --status-ok-fg: #15803d;
+  --status-late-bg: #fee2e2;
+  --status-late-fg: #b91c1c;
+  --surface: #ffffff;
+  --surface-muted: #f4f6f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+.msym {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input {
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-ok {
+  background: var(--status-ok-bg);
+  color: var(--status-ok-fg);
+}
+
+.badge-late {
+  background: var(--status-late-bg);
+  color: var(--status-late-fg);
+}
