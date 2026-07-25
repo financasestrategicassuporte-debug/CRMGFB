@@ -64,6 +64,8 @@ export default function CrmPage() {
   const [showQualify, setShowQualify] = useState(false);
   const [qualifyForm, setQualifyForm] = useState({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
   const [newDeal, setNewDeal] = useState({ person_name: "", phone: "", value: "" });
+  const [closing, setClosing] = useState(false);
+  const [closeMessage, setCloseMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -119,6 +121,7 @@ export default function CrmPage() {
 
   async function openDeal(deal: Deal) {
     setSelected(deal);
+    setCloseMessage(null);
     const res = await fetch(`/api/deals/${deal.id}/notes`);
     const data = await res.json();
     setNotes(data.notes ?? []);
@@ -157,6 +160,22 @@ export default function CrmPage() {
     const res = await fetch(`/api/deals/${selected.id}/notes`);
     const data = await res.json();
     setNotes(data.notes ?? []);
+  }
+
+  async function closeDeal() {
+    if (!selected) return;
+    setClosing(true);
+    setCloseMessage(null);
+    const res = await fetch(`/api/deals/${selected.id}/close`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setCloseMessage(body.error ?? "Não foi possível fechar a negociação.");
+      setClosing(false);
+      return;
+    }
+    setCloseMessage(`Negócio fechado! Cliente "${body.client.name}" criado e onboarding iniciado.`);
+    setClosing(false);
+    loadDeals();
   }
 
   async function distribute() {
@@ -374,12 +393,39 @@ export default function CrmPage() {
 
             <button
               className="btn-primary"
-              style={{ width: "100%", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              style={{ width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
               onClick={() => setShowQualify(true)}
             >
               <span className="msym" style={{ fontSize: 16 }}>bolt</span>
               IA para Negociações · Qualificar
             </button>
+
+            {selected.stage !== 6 && (
+              <button
+                onClick={closeDeal}
+                disabled={closing}
+                style={{
+                  width: "100%",
+                  marginBottom: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  background: "var(--bg-dark)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: 11,
+                  fontWeight: 700,
+                }}
+              >
+                <span className="msym" style={{ fontSize: 16, color: "var(--accent)" }}>task_alt</span>
+                {closing ? "Fechando…" : "Fechar negócio · Criar cliente"}
+              </button>
+            )}
+            {closeMessage && (
+              <p style={{ fontSize: 13, color: "var(--accent-darker)", marginTop: -8, marginBottom: 14 }}>{closeMessage}</p>
+            )}
 
             <h3 style={{ fontSize: 13 }}>Anotações</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
