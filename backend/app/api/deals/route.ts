@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const pipeline = searchParams.get("pipeline");
   const stage = searchParams.get("stage");
   const assignedTo = searchParams.get("assigned_to");
+  const includeLost = searchParams.get("lost") === "true";
 
   let query = supabase
     .from("deals")
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
   if (pipeline) query = query.eq("pipeline", pipeline);
   if (stage) query = query.eq("stage", Number(stage));
   if (assignedTo) query = query.eq("assigned_to", assignedTo);
+  // O kanban ativo esconde negociações perdidas por padrão — passe
+  // ?lost=true pra ver especificamente essas.
+  query = includeLost ? query.eq("lost", true) : query.eq("lost", false);
 
   const { data, error } = await query;
   if (error) return dbError(error);

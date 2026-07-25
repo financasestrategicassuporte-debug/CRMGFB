@@ -554,6 +554,57 @@ export type Database = {
           },
         ]
       }
+      deal_tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          deal_id: string
+          description: string | null
+          done: boolean
+          due_date: string | null
+          id: string
+          task_type: string
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          deal_id: string
+          description?: string | null
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          task_type?: string
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          deal_id?: string
+          description?: string | null
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          task_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           ad: string | null
@@ -564,6 +615,7 @@ export type Database = {
           email: string | null
           forecast: string | null
           id: string
+          lost: boolean
           objective: string | null
           owner_name: string | null
           pain_points: string | null
@@ -596,6 +648,7 @@ export type Database = {
           email?: string | null
           forecast?: string | null
           id?: string
+          lost?: boolean
           objective?: string | null
           owner_name?: string | null
           pain_points?: string | null
@@ -628,6 +681,7 @@ export type Database = {
           email?: string | null
           forecast?: string | null
           id?: string
+          lost?: boolean
           objective?: string | null
           owner_name?: string | null
           pain_points?: string | null

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
 
 type Deal = {
@@ -46,10 +47,11 @@ function fmtBRL(v: number | null) {
 
 function fmtDate(iso: string | null) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
 export default function CrmPage() {
+  const router = useRouter();
   const [role, setRole] = useState("admin");
   const [pipeline, setPipeline] = useState<"quente" | "frio">("quente");
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -58,14 +60,7 @@ export default function CrmPage() {
   const [loading, setLoading] = useState(true);
   const [distributing, setDistributing] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [selected, setSelected] = useState<Deal | null>(null);
-  const [notes, setNotes] = useState<{ id: string; body: string; created_at: string; is_ai_generated: boolean }[]>([]);
-  const [noteText, setNoteText] = useState("");
-  const [showQualify, setShowQualify] = useState(false);
-  const [qualifyForm, setQualifyForm] = useState({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
   const [newDeal, setNewDeal] = useState({ person_name: "", phone: "", value: "" });
-  const [closing, setClosing] = useState(false);
-  const [closeMessage, setCloseMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -108,7 +103,8 @@ export default function CrmPage() {
     loadDeals();
   }
 
-  async function moveStage(deal: Deal, delta: number) {
+  async function moveStage(deal: Deal, delta: number, e: React.MouseEvent) {
+    e.stopPropagation();
     const nextStage = Math.min(6, Math.max(0, deal.stage + delta));
     if (nextStage === deal.stage) return;
     await fetch(`/api/deals/${deal.id}`, {
@@ -116,65 +112,6 @@ export default function CrmPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage: nextStage }),
     });
-    loadDeals();
-  }
-
-  async function openDeal(deal: Deal) {
-    setSelected(deal);
-    setCloseMessage(null);
-    const res = await fetch(`/api/deals/${deal.id}/notes`);
-    const data = await res.json();
-    setNotes(data.notes ?? []);
-  }
-
-  async function addNote() {
-    if (!selected || !noteText.trim()) return;
-    await fetch(`/api/deals/${selected.id}/notes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: noteText }),
-    });
-    setNoteText("");
-    const res = await fetch(`/api/deals/${selected.id}/notes`);
-    const data = await res.json();
-    setNotes(data.notes ?? []);
-  }
-
-  async function submitQualify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    await fetch(`/api/deals/${selected.id}/qualify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        students_count: Number(qualifyForm.students_count) || 0,
-        revenue: Number(qualifyForm.revenue) || 0,
-        pain_level: qualifyForm.pain_level,
-        urgency: qualifyForm.urgency,
-        uses_software: qualifyForm.uses_software,
-      }),
-    });
-    setShowQualify(false);
-    setQualifyForm({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
-    loadDeals();
-    const res = await fetch(`/api/deals/${selected.id}/notes`);
-    const data = await res.json();
-    setNotes(data.notes ?? []);
-  }
-
-  async function closeDeal() {
-    if (!selected) return;
-    setClosing(true);
-    setCloseMessage(null);
-    const res = await fetch(`/api/deals/${selected.id}/close`, { method: "POST" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setCloseMessage(body.error ?? "Não foi possível fechar a negociação.");
-      setClosing(false);
-      return;
-    }
-    setCloseMessage(`Negócio fechado! Cliente "${body.client.name}" criado e onboarding iniciado.`);
-    setClosing(false);
     loadDeals();
   }
 
@@ -208,8 +145,8 @@ export default function CrmPage() {
         icon="contacts"
         role={role}
       />
-      <div style={{ padding: 32 }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ padding: "20px 20px 32px" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <button
             onClick={() => setPipeline("quente")}
             className="card"
@@ -217,12 +154,13 @@ export default function CrmPage() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              padding: "8px 14px",
+              padding: "7px 12px",
               background: pipeline === "quente" ? "var(--bg-dark)" : "#fff",
               color: pipeline === "quente" ? "#fff" : "var(--text)",
+              fontSize: 13,
             }}
           >
-            <span className="msym" style={{ fontSize: 16, color: pipeline === "quente" ? "#f97316" : "var(--text-faint)" }}>local_fire_department</span>
+            <span className="msym" style={{ fontSize: 15, color: pipeline === "quente" ? "#f97316" : "var(--text-faint)" }}>local_fire_department</span>
             Funil Quente
           </button>
           <button
@@ -232,21 +170,22 @@ export default function CrmPage() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              padding: "8px 14px",
+              padding: "7px 12px",
               background: pipeline === "frio" ? "var(--bg-dark)" : "#fff",
               color: pipeline === "frio" ? "#fff" : "var(--text)",
+              fontSize: 13,
             }}
           >
-            <span className="msym" style={{ fontSize: 16, color: pipeline === "frio" ? "#38bdf8" : "var(--text-faint)" }}>ac_unit</span>
+            <span className="msym" style={{ fontSize: 15, color: pipeline === "frio" ? "#38bdf8" : "var(--text-faint)" }}>ac_unit</span>
             Funil Frio
           </button>
         </div>
 
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span className="msym" style={{ color: "var(--accent-darker)" }}>filter_alt</span>
+        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>filter_alt</span>
             {role === "admin" && (
-              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)} style={{ ...selectStyle }}>
+              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)} style={selectStyle}>
                 <option value="all">Todos os SDRs e Closers</option>
                 {team.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -258,12 +197,12 @@ export default function CrmPage() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {role === "admin" && (
-              <button className="btn-primary" onClick={distribute} disabled={distributing} style={{ background: "var(--bg-dark)" }}>
-                <span className="msym" style={{ fontSize: 16, verticalAlign: "middle", marginRight: 4 }}>hub</span>
+              <button className="btn-primary" onClick={distribute} disabled={distributing} style={{ background: "var(--bg-dark)", fontSize: 13, padding: "9px 12px" }}>
+                <span className="msym" style={{ fontSize: 15, verticalAlign: "middle", marginRight: 4 }}>hub</span>
                 {distributing ? "Distribuindo…" : "Distribuir por Performance"}
               </button>
             )}
-            <button className="btn-primary" onClick={() => setShowForm(true)}>
+            <button className="btn-primary" onClick={() => setShowForm(true)} style={{ fontSize: 13, padding: "9px 14px" }}>
               + Criar
             </button>
           </div>
@@ -272,65 +211,64 @@ export default function CrmPage() {
         {loading ? (
           <p>Carregando…</p>
         ) : (
-          <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 10, overflowX: "auto" }}>
             {columns.map((col) => (
-              <div key={col.stage} style={{ minWidth: 260, flex: "0 0 auto" }}>
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+              <div key={col.stage} style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={col.label}>
                   {col.label} <span style={{ color: "var(--text-faint)" }}>({col.deals.length})</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {col.deals.map((deal) => (
-                    <div key={deal.id} className="card" style={{ cursor: "pointer" }} onClick={() => openDeal(deal)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>{deal.person_name}</div>
+                    <div
+                      key={deal.id}
+                      className="card"
+                      style={{ cursor: "pointer", padding: 10 }}
+                      onClick={() => router.push(`/crm/${deal.id}`)}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
+                        <div style={{ fontWeight: 700, fontSize: 12.5, lineHeight: 1.3 }}>{deal.person_name}</div>
                         {deal.qualification ? (
-                          <span style={{ display: "flex", alignItems: "center", gap: 2, color: "#f59e0b", fontSize: 12, fontWeight: 700 }}>
-                            <span className="msym" style={{ fontSize: 14 }}>star</span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 1, color: "#f59e0b", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                            <span className="msym" style={{ fontSize: 13 }}>star</span>
                             {deal.qualification}
                           </span>
                         ) : null}
                       </div>
-                      <div style={{ color: "var(--text-faint)", fontSize: 12 }}>{deal.phone}</div>
-                      {deal.value ? <div style={{ fontSize: 13, marginTop: 4, fontWeight: 700 }}>{fmtBRL(deal.value)}</div> : null}
+                      {deal.value ? <div style={{ fontSize: 12, marginTop: 4, fontWeight: 700 }}>{fmtBRL(deal.value)}</div> : null}
                       {deal.task_desc && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginTop: 6, color: "var(--text-faint)" }}>
-                          <span className="msym" style={{ fontSize: 15 }}>{TASK_ICON[deal.task_type ?? ""] ?? "task_alt"}</span>
-                          {deal.task_desc}
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, marginTop: 6, color: "var(--text-faint)" }}>
+                          <span className="msym" style={{ fontSize: 13 }}>{TASK_ICON[deal.task_type ?? ""] ?? "task_alt"}</span>
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal.task_desc}</span>
                         </div>
                       )}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                         {deal.assignee ? (
-                          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
-                            <span
-                              style={{
-                                width: 18,
-                                height: 18,
-                                borderRadius: "50%",
-                                background: deal.assignee.color ?? "var(--accent)",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: 8,
-                                fontWeight: 700,
-                                color: "#fff",
-                              }}
-                            >
-                              {deal.assignee.initials ?? deal.assignee.name.slice(0, 2).toUpperCase()}
-                            </span>
-                            {deal.assignee.name}
+                          <span
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: "50%",
+                              background: deal.assignee.color ?? "var(--accent)",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 7,
+                              fontWeight: 700,
+                              color: "#fff",
+                              flexShrink: 0,
+                            }}
+                            title={deal.assignee.name}
+                          >
+                            {deal.assignee.initials ?? deal.assignee.name.slice(0, 2).toUpperCase()}
                           </span>
                         ) : (
-                          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Sem dono</span>
+                          <span style={{ fontSize: 10, color: "var(--text-faint)" }}>Sem dono</span>
                         )}
-                        <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{fmtDate(deal.task_date)}</span>
+                        <span style={{ fontSize: 9, color: "var(--text-faint)" }}>{fmtDate(deal.task_date)}</span>
                       </div>
-                      <div style={{ display: "flex", gap: 6, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => moveStage(deal, -1)} style={{ border: "1px solid var(--border)", borderRadius: 6, background: "#fff" }}>
-                          ◀
-                        </button>
-                        <button onClick={() => moveStage(deal, 1)} style={{ border: "1px solid var(--border)", borderRadius: 6, background: "#fff" }}>
-                          ▶
-                        </button>
+                      <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                        <button onClick={(e) => moveStage(deal, -1, e)} style={miniBtn}>◀</button>
+                        <button onClick={(e) => moveStage(deal, 1, e)} style={miniBtn}>▶</button>
                       </div>
                     </div>
                   ))}
@@ -376,137 +314,6 @@ export default function CrmPage() {
           </form>
         </div>
       )}
-
-      {selected && !showQualify && (
-        <div style={overlayStyle}>
-          <div className="card" style={{ width: 420, background: "#fff", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <h2 style={{ marginTop: 0, fontSize: 16 }}>{selected.person_name}</h2>
-              <button onClick={() => setSelected(null)} style={{ border: "none", background: "none", fontSize: 16 }}>
-                ✕
-              </button>
-            </div>
-            <p style={{ color: "var(--text-faint)", fontSize: 13 }}>
-              {STAGES[selected.stage]} · {selected.pipeline}
-              {selected.qualification ? ` · ${selected.qualification}★` : ""}
-            </p>
-
-            <button
-              className="btn-primary"
-              style={{ width: "100%", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-              onClick={() => setShowQualify(true)}
-            >
-              <span className="msym" style={{ fontSize: 16 }}>bolt</span>
-              IA para Negociações · Qualificar
-            </button>
-
-            {selected.stage !== 6 && (
-              <button
-                onClick={closeDeal}
-                disabled={closing}
-                style={{
-                  width: "100%",
-                  marginBottom: 14,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  background: "var(--bg-dark)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: 11,
-                  fontWeight: 700,
-                }}
-              >
-                <span className="msym" style={{ fontSize: 16, color: "var(--accent)" }}>task_alt</span>
-                {closing ? "Fechando…" : "Fechar negócio · Criar cliente"}
-              </button>
-            )}
-            {closeMessage && (
-              <p style={{ fontSize: 13, color: "var(--accent-darker)", marginTop: -8, marginBottom: 14 }}>{closeMessage}</p>
-            )}
-
-            <h3 style={{ fontSize: 13 }}>Anotações</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-              {notes.map((n) => (
-                <div key={n.id} style={{ fontSize: 13, borderBottom: "1px solid var(--border)", paddingBottom: 6 }}>
-                  {n.is_ai_generated && <span className="badge badge-ok" style={{ marginRight: 6 }}>IA</span>}
-                  {n.body}
-                </div>
-              ))}
-              {notes.length === 0 && <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Nenhuma anotação ainda.</p>}
-            </div>
-            <textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Adicionar anotação…"
-              style={{ ...inputStyle, minHeight: 60 }}
-            />
-            <button className="btn-primary" style={{ width: "100%" }} onClick={addNote}>
-              Adicionar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {selected && showQualify && (
-        <div style={overlayStyle}>
-          <form onSubmit={submitQualify} className="card" style={{ width: 380, background: "#fff" }}>
-            <h2 style={{ marginTop: 0, fontSize: 16 }}>Qualificar — {selected.person_name}</h2>
-            <label style={labelStyle}>Quantidade de alunos</label>
-            <input
-              required
-              type="number"
-              value={qualifyForm.students_count}
-              onChange={(e) => setQualifyForm({ ...qualifyForm, students_count: e.target.value })}
-              style={inputStyle}
-            />
-            <label style={labelStyle}>Faturamento mensal (R$)</label>
-            <input
-              required
-              type="number"
-              value={qualifyForm.revenue}
-              onChange={(e) => setQualifyForm({ ...qualifyForm, revenue: e.target.value })}
-              style={inputStyle}
-            />
-            <label style={labelStyle}>Dor (1-5)</label>
-            <input
-              type="range"
-              min={1}
-              max={5}
-              value={qualifyForm.pain_level}
-              onChange={(e) => setQualifyForm({ ...qualifyForm, pain_level: Number(e.target.value) })}
-              style={{ width: "100%" }}
-            />
-            <label style={labelStyle}>Urgência (1-5)</label>
-            <input
-              type="range"
-              min={1}
-              max={5}
-              value={qualifyForm.urgency}
-              onChange={(e) => setQualifyForm({ ...qualifyForm, urgency: Number(e.target.value) })}
-              style={{ width: "100%" }}
-            />
-            <label style={{ ...labelStyle, display: "flex", alignItems: "center", gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={qualifyForm.uses_software}
-                onChange={(e) => setQualifyForm({ ...qualifyForm, uses_software: e.target.checked })}
-              />
-              Já usa CRM/ferramenta hoje
-            </label>
-            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <button type="button" onClick={() => setShowQualify(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
-                Voltar
-              </button>
-              <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-                Gerar diagnóstico
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 }
@@ -535,7 +342,16 @@ const inputStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
   borderRadius: 10,
-  padding: "8px 12px",
-  fontSize: 13,
+  padding: "7px 10px",
+  fontSize: 12,
   background: "#fff",
+};
+
+const miniBtn: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  background: "#fff",
+  fontSize: 11,
+  padding: "2px 6px",
+  flex: 1,
 };

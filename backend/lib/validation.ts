@@ -57,12 +57,25 @@ export const dealSchema = z.object({
   profile_notes: z.string().optional(),
   pain_points: z.string().optional(),
   assigned_to: z.string().uuid().nullable().optional(),
+  lost: z.boolean().optional(),
 });
 
 export const dealUpdateSchema = dealSchema.partial();
 
 export const dealNoteSchema = z.object({
   body: z.string().min(1),
+});
+
+export const dealTaskSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  assigned_to: z.string().uuid().nullable().optional(),
+  task_type: z.string().optional(),
+  due_date: z.string().optional(),
+});
+
+export const dealTaskUpdateSchema = dealTaskSchema.partial().extend({
+  done: z.boolean().optional(),
 });
 
 export const qualifyDealSchema = z.object({
