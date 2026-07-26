@@ -35,6 +35,7 @@ export const clientUpdateSchema = clientSchema.partial().extend({
 export const dealSchema = z.object({
   pipeline: z.enum(["quente", "frio"]),
   person_name: z.string().min(2),
+  company_name: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   product: z.string().optional(),

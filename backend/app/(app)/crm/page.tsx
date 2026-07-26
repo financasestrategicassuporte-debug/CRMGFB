@@ -7,6 +7,7 @@ import { Banner } from "../banner";
 type Deal = {
   id: string;
   person_name: string;
+  company_name: string | null;
   phone: string | null;
   email: string | null;
   pipeline: "quente" | "frio";
@@ -17,6 +18,7 @@ type Deal = {
   task_type: string | null;
   task_desc: string | null;
   task_date: string | null;
+  created_at: string;
   assigned_to: string | null;
   assignee?: { id: string; name: string; initials: string | null; color: string | null } | null;
 };
@@ -47,7 +49,7 @@ function fmtBRL(v: number | null) {
 
 function fmtDate(iso: string | null) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export default function CrmPage() {
@@ -60,7 +62,7 @@ export default function CrmPage() {
   const [loading, setLoading] = useState(true);
   const [distributing, setDistributing] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [newDeal, setNewDeal] = useState({ person_name: "", phone: "", value: "" });
+  const [newDeal, setNewDeal] = useState({ company_name: "", person_name: "", phone: "", value: "" });
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -93,12 +95,13 @@ export default function CrmPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         person_name: newDeal.person_name,
+        company_name: newDeal.company_name || undefined,
         phone: newDeal.phone || undefined,
         pipeline,
         value: newDeal.value ? Number(newDeal.value) : undefined,
       }),
     });
-    setNewDeal({ person_name: "", phone: "", value: "" });
+    setNewDeal({ company_name: "", person_name: "", phone: "", value: "" });
     setShowForm(false);
     loadDeals();
   }
@@ -256,7 +259,9 @@ export default function CrmPage() {
                         <span className="msym" style={{ fontSize: 14, color: "var(--text-faint)" }}>info</span>
                       </div>
 
-                      <div style={{ fontWeight: 700, fontSize: 12.5, lineHeight: 1.3, marginBottom: 6 }}>{deal.person_name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 12.5, lineHeight: 1.3, marginBottom: 6 }}>
+                        {deal.company_name ? `${deal.company_name} – ${deal.person_name}` : deal.person_name}
+                      </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                         {deal.qualification ? (
@@ -292,7 +297,7 @@ export default function CrmPage() {
                         <span className="msym" style={{ fontSize: 13 }}>badge</span>
                         {deal.assignee ? deal.assignee.name : "Sem dono"}
                       </div>
-                      <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDate(deal.task_date)}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDate(deal.task_date ?? deal.created_at)}</div>
                     </div>
                   ))}
                 </div>
@@ -307,7 +312,14 @@ export default function CrmPage() {
         <div style={overlayStyle}>
           <form onSubmit={createDeal} className="card" style={{ width: 360, background: "#fff" }}>
             <h2 style={{ marginTop: 0, fontSize: 16 }}>Nova negociação · Funil {pipeline === "quente" ? "Quente" : "Frio"}</h2>
-            <label style={labelStyle}>Nome</label>
+            <label style={labelStyle}>Nome da academia</label>
+            <input
+              value={newDeal.company_name}
+              onChange={(e) => setNewDeal({ ...newDeal, company_name: e.target.value })}
+              style={inputStyle}
+              placeholder="Ex: ULTRA ACADEMIA"
+            />
+            <label style={labelStyle}>Nome do contato</label>
             <input
               required
               value={newDeal.person_name}

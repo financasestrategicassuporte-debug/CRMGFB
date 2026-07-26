@@ -611,6 +611,7 @@ export type Database = {
           adset: string | null
           assigned_to: string | null
           campaign: string | null
+          company_name: string | null
           created_at: string
           email: string | null
           forecast: string | null
@@ -644,6 +645,7 @@ export type Database = {
           adset?: string | null
           assigned_to?: string | null
           campaign?: string | null
+          company_name?: string | null
           created_at?: string
           email?: string | null
           forecast?: string | null
@@ -677,6 +679,7 @@ export type Database = {
           adset?: string | null
           assigned_to?: string | null
           campaign?: string | null
+          company_name?: string | null
           created_at?: string
           email?: string | null
           forecast?: string | null

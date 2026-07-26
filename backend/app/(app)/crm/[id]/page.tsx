@@ -7,6 +7,7 @@ import { Banner } from "../../banner";
 type Deal = {
   id: string;
   person_name: string;
+  company_name: string | null;
   phone: string | null;
   email: string | null;
   pipeline: "quente" | "frio";
@@ -41,6 +42,7 @@ const STAGES = [
 ];
 
 const EDIT_FIELDS: { key: keyof Deal; label: string; type?: string }[] = [
+  { key: "company_name", label: "Nome da academia" },
   { key: "qualification", label: "Qualificação", type: "number" },
   { key: "forecast", label: "Previsão de fechamento" },
   { key: "source", label: "Fonte" },
@@ -239,7 +241,9 @@ export default function DealDetailPage() {
               ←
             </button>
             <div>
-              <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{deal.person_name}</h1>
+              <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
+                {deal.company_name ? `${deal.company_name} – ${deal.person_name}` : deal.person_name}
+              </h1>
               {deal.lost && <span className="badge badge-late">Perdida</span>}
             </div>
           </div>
