@@ -79,7 +79,7 @@ export default function DealDetailPage() {
   const [showQualify, setShowQualify] = useState(false);
   const [qualifyForm, setQualifyForm] = useState({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
   const [showTaskForm, setShowTaskForm] = useState(false);
-  const [taskForm, setTaskForm] = useState({ title: "", description: "", assigned_to: "", task_type: "tarefa" });
+  const [taskForm, setTaskForm] = useState({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -197,9 +197,10 @@ export default function DealDetailPage() {
         description: taskForm.description || undefined,
         assigned_to: taskForm.assigned_to || undefined,
         task_type: taskForm.task_type,
+        due_date: taskForm.due_date || undefined,
       }),
     });
-    setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa" });
+    setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
     setShowTaskForm(false);
     load();
   }
@@ -486,13 +487,20 @@ export default function DealDetailPage() {
               ))}
             </select>
             <label style={labelStyle}>Tipo de tarefa</label>
-            <select value={taskForm.task_type} onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })} style={{ ...inputStyle, marginBottom: 18 }}>
+            <select value={taskForm.task_type} onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })} style={inputStyle}>
               <option value="tarefa">Tarefa</option>
               <option value="ligacao">Ligação</option>
               <option value="reuniao">Reunião</option>
               <option value="proposta">Proposta</option>
               <option value="followup">Follow-up</option>
             </select>
+            <label style={labelStyle}>Data/hora de vencimento</label>
+            <input
+              type="datetime-local"
+              value={taskForm.due_date}
+              onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+              style={{ ...inputStyle, marginBottom: 18 }}
+            />
             <button type="submit" className="btn-primary" style={{ width: "100%" }}>Criar tarefa</button>
           </form>
         </div>

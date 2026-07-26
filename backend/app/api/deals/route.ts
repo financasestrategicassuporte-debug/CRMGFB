@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("deals")
-    .select("*, assignee:profiles(id,name,initials,color)")
+    .select("*, assignee:profiles(id,name,initials,color), tasks:deal_tasks(id,title,done,due_date,task_type)")
     .order("created_at", { ascending: false });
 
   if (pipeline) query = query.eq("pipeline", pipeline);

@@ -21,6 +21,7 @@ type Deal = {
   created_at: string;
   assigned_to: string | null;
   assignee?: { id: string; name: string; initials: string | null; color: string | null } | null;
+  tasks?: { id: string; title: string; done: boolean; due_date: string | null; task_type: string | null }[];
 };
 
 type TeamMember = { id: string; name: string; role: string; initials: string | null };
@@ -34,6 +35,8 @@ const STAGES = [
   "Em Negociação / Proposta",
   "Acompanhamento",
 ];
+
+const STAGE_NEGOCIACAO = 5;
 
 const TASK_ICON: Record<string, string> = {
   ligacao: "call",
@@ -50,6 +53,31 @@ function fmtBRL(v: number | null) {
 function fmtDate(iso: string | null) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Tarefa aberta mais próxima do vencimento — prioriza a lista real de
+ * tarefas (deal_tasks); se o deal ainda não tem nenhuma, cai pro campo
+ * legado (task_desc/task_type/task_date) que os dados de exemplo usam. */
+function pendingActivity(deal: Deal) {
+  const open = (deal.tasks ?? []).filter((t) => !t.done);
+  if (open.length > 0) {
+    open.sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
+    return { title: open[0].title, type: open[0].task_type, date: open[0].due_date };
+  }
+  if (deal.task_desc) {
+    return { title: deal.task_desc, type: deal.task_type, date: deal.task_date };
+  }
+  return null;
+}
+
+/** Alerta "urgente": negociação em Em Negociação/Proposta com alguma
+ * tarefa aberta vencendo hoje ou atrasada — some sozinho assim que a
+ * tarefa é marcada como feita (o card deixa de ter tarefa aberta vencida). */
+function isUrgent(deal: Deal) {
+  if (deal.stage !== STAGE_NEGOCIACAO) return false;
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  return (deal.tasks ?? []).some((t) => !t.done && t.due_date && new Date(t.due_date) <= endOfToday);
 }
 
 export default function CrmPage() {
@@ -244,13 +272,36 @@ export default function CrmPage() {
                   </span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {col.deals.map((deal) => (
+                  {col.deals.map((deal) => {
+                    const activity = pendingActivity(deal);
+                    const urgent = isUrgent(deal);
+                    return (
                     <div
                       key={deal.id}
                       className="card"
-                      style={{ cursor: "pointer", padding: 10 }}
+                      style={{ cursor: "pointer", padding: 10, borderColor: urgent ? "#dc2626" : undefined }}
                       onClick={() => router.push(`/crm/${deal.id}`)}
                     >
+                      {urgent && (
+                        <div
+                          className="urgent-alert"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            color: "#dc2626",
+                            background: "#fee2e2",
+                            borderRadius: 8,
+                            padding: "4px 8px",
+                            marginBottom: 6,
+                          }}
+                        >
+                          <span className="msym" style={{ fontSize: 14 }}>warning</span>
+                          Urgente — Pegar resposta
+                        </div>
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "#0ea5e9", fontWeight: 700 }}>
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0ea5e9", display: "inline-block" }} />
@@ -274,7 +325,7 @@ export default function CrmPage() {
                         {deal.value ? <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtBRL(deal.value)}</span> : null}
                       </div>
 
-                      {deal.task_desc && (
+                      {activity && (
                         <div
                           style={{
                             display: "flex",
@@ -288,8 +339,8 @@ export default function CrmPage() {
                             border: "1px solid var(--border)",
                           }}
                         >
-                          <span className="msym" style={{ fontSize: 13, color: "var(--accent-darker)" }}>{TASK_ICON[deal.task_type ?? ""] ?? "task_alt"}</span>
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal.task_desc}</span>
+                          <span className="msym" style={{ fontSize: 13, color: "var(--accent-darker)" }}>{TASK_ICON[activity.type ?? ""] ?? "task_alt"}</span>
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activity.title}</span>
                         </div>
                       )}
 
@@ -297,9 +348,10 @@ export default function CrmPage() {
                         <span className="msym" style={{ fontSize: 13 }}>badge</span>
                         {deal.assignee ? deal.assignee.name : "Sem dono"}
                       </div>
-                      <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDate(deal.task_date ?? deal.created_at)}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDate(activity?.date ?? deal.created_at)}</div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               );
