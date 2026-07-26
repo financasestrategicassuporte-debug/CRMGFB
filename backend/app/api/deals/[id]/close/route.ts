@@ -69,11 +69,16 @@ export async function POST(_request: Request, { params }: { params: { id: string
 
   const { data: closedDeal, error: updateError } = await supabase
     .from("deals")
-    .update({ stage: 6, revenue: valor })
+    .update({ stage: 6, revenue: valor, stage_changed_at: today.toISOString() })
     .eq("id", params.id)
     .select()
     .single();
   if (updateError) return dbError(updateError);
 
-  return NextResponse.json({ client, deal: closedDeal }, { status: 201 });
+  const monthStart = `${today.toISOString().slice(0, 7)}-01`;
+  const { data: monthPurchases } = await supabase.from("purchases").select("valor").gte("data", monthStart);
+  const saleNumber = monthPurchases?.length ?? 1;
+  const monthRevenue = (monthPurchases ?? []).reduce((sum, p) => sum + (p.valor ?? 0), 0);
+
+  return NextResponse.json({ client, deal: closedDeal, saleNumber, monthRevenue }, { status: 201 });
 }

@@ -19,9 +19,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const parsed = await parseBody(request, dealUpdateSchema);
   if ("error" in parsed) return parsed.error;
 
+  const payload = { ...parsed.data } as typeof parsed.data & { stage_changed_at?: string };
+  if (payload.stage !== undefined) {
+    payload.stage_changed_at = new Date().toISOString();
+  }
+
   const { data, error } = await supabase
     .from("deals")
-    .update(parsed.data)
+    .update(payload)
     .eq("id", params.id)
     .select()
     .single();

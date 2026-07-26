@@ -605,6 +605,102 @@ export type Database = {
           },
         ]
       }
+      deal_automations: {
+        Row: {
+          id: string
+          title: string
+          trigger_stage: number
+          action_type: string
+          task_type: string | null
+          run_time: string | null
+          skip_weekends: boolean
+          delay_days: number
+          template_subject: string | null
+          template_body: string | null
+          active: boolean
+          run_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          trigger_stage: number
+          action_type: string
+          task_type?: string | null
+          run_time?: string | null
+          skip_weekends?: boolean
+          delay_days?: number
+          template_subject?: string | null
+          template_body?: string | null
+          active?: boolean
+          run_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          trigger_stage?: number
+          action_type?: string
+          task_type?: string | null
+          run_time?: string | null
+          skip_weekends?: boolean
+          delay_days?: number
+          template_subject?: string | null
+          template_body?: string | null
+          active?: boolean
+          run_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deal_automation_runs: {
+        Row: {
+          id: string
+          rule_id: string
+          deal_id: string
+          stage_changed_at: string
+          status: string
+          detail: string | null
+          executed_at: string
+        }
+        Insert: {
+          id?: string
+          rule_id: string
+          deal_id: string
+          stage_changed_at: string
+          status: string
+          detail?: string | null
+          executed_at?: string
+        }
+        Update: {
+          id?: string
+          rule_id?: string
+          deal_id?: string
+          stage_changed_at?: string
+          status?: string
+          detail?: string | null
+          executed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_automation_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "deal_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_automation_runs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           ad: string | null
@@ -617,6 +713,7 @@ export type Database = {
           forecast: string | null
           id: string
           lost: boolean
+          lost_reason: string | null
           objective: string | null
           owner_name: string | null
           pain_points: string | null
@@ -632,6 +729,7 @@ export type Database = {
           score: number | null
           source: string | null
           stage: number
+          stage_changed_at: string
           students_count: number | null
           task_date: string | null
           task_desc: string | null
@@ -651,6 +749,7 @@ export type Database = {
           forecast?: string | null
           id?: string
           lost?: boolean
+          lost_reason?: string | null
           objective?: string | null
           owner_name?: string | null
           pain_points?: string | null
@@ -666,6 +765,7 @@ export type Database = {
           score?: number | null
           source?: string | null
           stage?: number
+          stage_changed_at?: string
           students_count?: number | null
           task_date?: string | null
           task_desc?: string | null
@@ -685,6 +785,7 @@ export type Database = {
           forecast?: string | null
           id?: string
           lost?: boolean
+          lost_reason?: string | null
           objective?: string | null
           owner_name?: string | null
           pain_points?: string | null
@@ -700,6 +801,7 @@ export type Database = {
           score?: number | null
           source?: string | null
           stage?: number
+          stage_changed_at?: string
           students_count?: number | null
           task_date?: string | null
           task_desc?: string | null

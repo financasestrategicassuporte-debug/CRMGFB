@@ -59,6 +59,7 @@ export const dealSchema = z.object({
   pain_points: z.string().optional(),
   assigned_to: z.string().uuid().nullable().optional(),
   lost: z.boolean().optional(),
+  lost_reason: z.string().optional(),
 });
 
 export const dealUpdateSchema = dealSchema.partial();
@@ -86,6 +87,21 @@ export const qualifyDealSchema = z.object({
   urgency: z.number().int().min(1).max(5),
   uses_software: z.boolean(),
 });
+
+export const dealAutomationSchema = z.object({
+  title: z.string().min(2),
+  trigger_stage: z.number().int().min(0).max(6),
+  action_type: z.enum(["email", "whatsapp", "task"]),
+  task_type: z.enum(["ligacao", "whatsapp"]).optional(),
+  run_time: z.string().optional(),
+  skip_weekends: z.boolean().optional(),
+  delay_days: z.number().int().min(0).optional(),
+  template_subject: z.string().optional(),
+  template_body: z.string().optional(),
+  active: z.boolean().optional(),
+});
+
+export const dealAutomationUpdateSchema = dealAutomationSchema.partial();
 
 export const automationSchema = z.object({
   client_id: z.string().uuid().nullable().optional(),

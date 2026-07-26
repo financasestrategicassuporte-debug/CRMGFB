@@ -13,6 +13,7 @@ type Deal = {
   pipeline: "quente" | "frio";
   stage: number;
   lost: boolean;
+  lost_reason: string | null;
   value: number | null;
   revenue: number | null;
   ticket: number | null;
@@ -28,7 +29,15 @@ type Deal = {
 };
 
 type Note = { id: string; body: string; created_at: string; is_ai_generated: boolean };
-type Task = { id: string; title: string; description: string | null; done: boolean; task_type: string; due_date: string | null; assignee?: { name: string } | null };
+type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  done: boolean;
+  task_type: string;
+  due_date: string | null;
+  assignee?: { id: string; name: string } | null;
+};
 type TeamMember = { id: string; name: string };
 
 const STAGES = [
@@ -59,9 +68,82 @@ const EDIT_FIELDS: { key: keyof Deal; label: string; type?: string }[] = [
 
 const HISTORY_TABS = ["Histórico", "Tarefas", "E-mail", "Questionários", "Produtos", "Arquivos", "Propostas"];
 
+const STAGE_NEGOCIACAO = 5;
+
+const LOST_REASONS = [
+  "Lead desqualificado",
+  "Optou por não fechar o projeto",
+  "Fechou com a concorrência",
+  "Não consegui mais contato, pois sumiu",
+];
+
+const FIRST_SALE_PHRASE = "Parabéns pela venda, é só o começo!";
+
+const SALE_PHRASES = [
+  "VENDAAA! TROPA DE ELITE!",
+  "VOCÊ É FODA, ORGULHO DE TER VOCÊ NA TROPA DE ELITE!",
+  "É AQUELA COISA NÉ? SE NÃO TEM CÃO, CAÇA COM GATO! #PRACIMA VOCÊ É FODA.",
+  "VENDAAA, TÁ DIFÍCIL? LIGA MAIS! VIU QUE DEU CERTO, TROPA DE ELITE!",
+  "PARABÉNS PELA VENDA, OS SENHORES ESTÃO FAZENDO SEU COMANDANTE MUITO FELIZ!!",
+  "SE CONTINUAR VENDENDO ASSIM, VAI MUDAR DE VIDA EM BREVE! VENDAAA",
+  "ME DIZ, VAI COMPRAR PRIMEIRO UMA PORSCHE OU UMA BMW? #VAMOPRACIMA NESSA PORRA! VENDAA",
+  "HOJE VOCÊ PROVOU PARA SI MESMO QUE TEM MAIS FOME DO QUE ONTEM, #PRACIMA! PARABÉNS.",
+];
+
+function pickCelebrationPhrase(saleNumber: number) {
+  if (saleNumber <= 1) return FIRST_SALE_PHRASE;
+  return SALE_PHRASES[Math.floor(Math.random() * SALE_PHRASES.length)];
+}
+
+function playSaleSound() {
+  if (typeof window === "undefined") return;
+  const url = window.localStorage.getItem("gymplus_sale_sound");
+  if (!url) return;
+  new Audio(url).play().catch(() => {});
+}
+
+function fmtBRL(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
+
+function toDatetimeLocal(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function taskStatusBadge(t: Task) {
+  if (!t.due_date) return null;
+  const late = new Date(t.due_date) < new Date();
+  return late ? (
+    <span className="badge badge-late">ATRASADA</span>
+  ) : (
+    <span className="badge" style={{ background: "#dbeafe", color: "#1d4ed8" }}>ABERTA EM DIA</span>
+  );
+}
+
+const TASK_TYPE_ICON: Record<string, string> = {
+  tarefa: "task_alt",
+  ligacao: "call",
+  reuniao: "groups",
+  proposta: "description",
+  followup: "person",
+  whatsapp: "chat",
+};
+
+const TASK_TYPE_LABEL: Record<string, string> = {
+  tarefa: "Tarefa",
+  ligacao: "Ligação",
+  reuniao: "Reunião",
+  proposta: "Proposta",
+  followup: "Follow-up",
+  whatsapp: "Mensagem WhatsApp",
+};
 
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -79,9 +161,14 @@ export default function DealDetailPage() {
   const [showQualify, setShowQualify] = useState(false);
   const [qualifyForm, setQualifyForm] = useState({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskForm, setTaskForm] = useState({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showLostForm, setShowLostForm] = useState(false);
+  const [lostReason, setLostReason] = useState(LOST_REASONS[0]);
+  const [showWonCelebration, setShowWonCelebration] = useState(false);
+  const [celebration, setCelebration] = useState<{ phrase: string; saleNumber: number; monthRevenue: number; clientName: string } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -162,16 +249,30 @@ export default function DealDetailPage() {
     load();
   }
 
-  async function markLost() {
-    if (!confirm("Marcar esta negociação como perdida?")) return;
+  async function confirmMarkLost(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
     await fetch(`/api/deals/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lost: true }),
+      body: JSON.stringify({ lost: true, lost_reason: lostReason }),
     });
     setBusy(false);
+    setShowLostForm(false);
     router.push("/crm");
+  }
+
+  async function resumeNegotiation() {
+    if (!confirm("Retomar esta negociação? Ela volta para a etapa de Negociação/Proposta.")) return;
+    setBusy(true);
+    await fetch(`/api/deals/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lost: false, lost_reason: null, stage: STAGE_NEGOCIACAO }),
+    });
+    setBusy(false);
+    setShowWonCelebration(false);
+    load();
   }
 
   async function markWon() {
@@ -183,26 +284,62 @@ export default function DealDetailPage() {
       setMessage(body.error ?? "Não foi possível fechar a negociação.");
       return;
     }
-    setMessage(`Venda registrada! Cliente "${body.client.name}" criado.`);
+    const saleNumber = body.saleNumber ?? 1;
+    setCelebration({
+      phrase: pickCelebrationPhrase(saleNumber),
+      saleNumber,
+      monthRevenue: body.monthRevenue ?? 0,
+      clientName: body.client?.name ?? deal?.person_name ?? "",
+    });
+    setShowWonCelebration(true);
+    playSaleSound();
     load();
   }
 
   async function createTask(e: React.FormEvent) {
     e.preventDefault();
-    await fetch(`/api/deals/${id}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: taskForm.title,
-        description: taskForm.description || undefined,
-        assigned_to: taskForm.assigned_to || undefined,
-        task_type: taskForm.task_type,
-        due_date: taskForm.due_date || undefined,
-      }),
-    });
+    const payload = {
+      title: taskForm.title,
+      description: taskForm.description || undefined,
+      assigned_to: taskForm.assigned_to || undefined,
+      task_type: taskForm.task_type,
+      due_date: taskForm.due_date || undefined,
+    };
+    if (editingTaskId) {
+      await fetch(`/api/deals/${id}/tasks/${editingTaskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await fetch(`/api/deals/${id}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
     setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
+    setEditingTaskId(null);
     setShowTaskForm(false);
     load();
+  }
+
+  function openEditTask(t: Task) {
+    setEditingTaskId(t.id);
+    setTaskForm({
+      title: t.title,
+      description: t.description ?? "",
+      assigned_to: t.assignee?.id ?? "",
+      task_type: t.task_type,
+      due_date: toDatetimeLocal(t.due_date),
+    });
+    setShowTaskForm(true);
+  }
+
+  function openCreateTask() {
+    setEditingTaskId(null);
+    setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
+    setShowTaskForm(true);
   }
 
   async function toggleTask(task: Task) {
@@ -253,7 +390,7 @@ export default function DealDetailPage() {
               <span className="msym" style={{ fontSize: 16 }}>bolt</span> Qualificar SDR IA
             </button>
             {!deal.lost && deal.stage !== 6 && (
-              <button onClick={markLost} disabled={busy} style={btnOutlineDanger}>
+              <button onClick={() => setShowLostForm(true)} disabled={busy} style={btnOutlineDanger}>
                 <span className="msym" style={{ fontSize: 16 }}>thumb_down</span> Marcar perda
               </button>
             )}
@@ -262,8 +399,17 @@ export default function DealDetailPage() {
                 <span className="msym" style={{ fontSize: 16 }}>paid</span> Marcar venda
               </button>
             )}
+            {(deal.lost || deal.stage === 6) && (
+              <button onClick={resumeNegotiation} disabled={busy} style={btnDark}>
+                <span className="msym" style={{ fontSize: 16 }}>undo</span> Retomar Negociação
+              </button>
+            )}
           </div>
         </div>
+
+        {deal.lost && deal.lost_reason && (
+          <p style={{ color: "var(--status-late-fg)", fontSize: 13, marginTop: -8, marginBottom: 12 }}>Motivo da perda: {deal.lost_reason}</p>
+        )}
 
         {message && <p style={{ color: "var(--accent-darker)", fontSize: 13, marginBottom: 12 }}>{message}</p>}
 
@@ -329,21 +475,38 @@ export default function DealDetailPage() {
             <div className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Próximas tarefas</h2>
-                <button onClick={() => setShowTaskForm(true)} className="btn-primary" style={{ padding: "6px 12px", fontSize: 12 }}>
+                <button onClick={openCreateTask} className="btn-primary" style={{ padding: "6px 12px", fontSize: 12 }}>
                   + Criar tarefa
                 </button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
                 {tasks.filter((t) => !t.done).map((t) => (
-                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="checkbox" checked={t.done} onChange={() => toggleTask(t)} />
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{t.title}</div>
-                        {t.description && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{t.description}</div>}
+                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", borderRadius: 10, padding: 10, gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <span className="msym" style={{ fontSize: 18, color: "var(--text-faint)" }}>
+                        {TASK_TYPE_ICON[t.task_type] ?? "task_alt"}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{TASK_TYPE_LABEL[t.task_type] ?? t.task_type}</div>
+                        <div style={{ fontSize: 12.5, color: "#2563eb", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
+                        {t.assignee && <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t.assignee.name}</div>}
                       </div>
                     </div>
-                    {t.assignee && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{t.assignee.name}</span>}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
+                      <div style={{ textAlign: "right" }}>
+                        {taskStatusBadge(t)}
+                        {t.due_date && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{fmtDateTime(t.due_date)}</div>}
+                      </div>
+                      <button onClick={() => openEditTask(t)} title="Editar" style={iconBtnStyle}>
+                        <span className="msym" style={{ fontSize: 16 }}>edit</span>
+                      </button>
+                      <button onClick={() => openEditTask(t)} title="Reagendar" style={iconBtnStyle}>
+                        <span className="msym" style={{ fontSize: 16 }}>schedule</span>
+                      </button>
+                      <button onClick={() => toggleTask(t)} title="Marcar como concluída" style={{ ...iconBtnStyle, background: "#dbeafe", color: "#1d4ed8" }}>
+                        <span className="msym" style={{ fontSize: 16 }}>check</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {tasks.filter((t) => !t.done).length === 0 && <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Nenhuma tarefa pendente.</p>}
@@ -466,12 +629,104 @@ export default function DealDetailPage() {
         </div>
       )}
 
+      {showLostForm && (
+        <div style={overlayStyle}>
+          <form onSubmit={confirmMarkLost} className="card" style={{ width: 380, background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <h2 style={{ marginTop: 0, fontSize: 16 }}>Marcar negociação como perdida</h2>
+              <button type="button" onClick={() => setShowLostForm(false)} style={{ border: "none", background: "none" }}>✕</button>
+            </div>
+            <label style={labelStyle}>Motivo da perda</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+              {LOST_REASONS.map((reason) => (
+                <label key={reason} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+                  <input type="radio" name="lost_reason" checked={lostReason === reason} onChange={() => setLostReason(reason)} />
+                  {reason}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setShowLostForm(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
+                Cancelar
+              </button>
+              <button type="submit" disabled={busy} style={{ flex: 1, ...btnOutlineDanger, justifyContent: "center" }}>
+                Confirmar perda
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showWonCelebration && celebration && (
+        <div style={overlayStyle}>
+          <div className="card" style={{ width: 420, background: "#fff", textAlign: "center", padding: 0, overflow: "hidden" }}>
+            <div
+              style={{
+                background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+                padding: "32px 24px 20px",
+                fontSize: 56,
+                lineHeight: 1,
+              }}
+            >
+              🏖️🌴🎉
+            </div>
+            <div style={{ padding: 24 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 800, marginTop: 0, marginBottom: 10 }}>{celebration.phrase}</h2>
+              <p style={{ fontSize: 13.5, color: "var(--text-faint)", marginBottom: 20 }}>
+                Parabéns! Essa é a {celebration.saleNumber}ª venda no mês. Até agora vocês já venderam{" "}
+                <strong style={{ color: "var(--text)" }}>{fmtBRL(celebration.monthRevenue)}</strong> nesse período.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <button
+                  onClick={() => router.push("/produtos")}
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11, fontSize: 13, fontWeight: 700 }}
+                >
+                  Abrir relatório de painel
+                </button>
+                <button
+                  onClick={() => router.push("/crm")}
+                  className="btn-primary"
+                  style={{ flex: 1, fontSize: 13 }}
+                >
+                  Ir para negociações
+                </button>
+              </div>
+              <button
+                onClick={resumeNegotiation}
+                disabled={busy}
+                style={{ width: "100%", border: "none", background: "none", color: "var(--text-faint)", fontSize: 12.5, fontWeight: 700, padding: 6 }}
+              >
+                <span className="msym" style={{ fontSize: 14, verticalAlign: "middle", marginRight: 4 }}>undo</span>
+                Retomar Negociação (caso a venda tenha sido pedida)
+              </button>
+              <label style={{ display: "block", marginTop: 10, fontSize: 11, color: "var(--text-faint)", cursor: "pointer" }}>
+                🔊 Configurar som da comemoração
+                <input
+                  type="file"
+                  accept="audio/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === "string") window.localStorage.setItem("gymplus_sale_sound", reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showTaskForm && (
         <div style={overlayStyle}>
           <form onSubmit={createTask} className="card" style={{ width: 380, background: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <h2 style={{ marginTop: 0, fontSize: 16 }}>Criar Tarefa</h2>
-              <button type="button" onClick={() => setShowTaskForm(false)} style={{ border: "none", background: "none" }}>✕</button>
+              <h2 style={{ marginTop: 0, fontSize: 16 }}>{editingTaskId ? "Editar Tarefa" : "Criar Tarefa"}</h2>
+              <button type="button" onClick={() => { setShowTaskForm(false); setEditingTaskId(null); }} style={{ border: "none", background: "none" }}>✕</button>
             </div>
             <label style={labelStyle}>Negociação</label>
             <input value={deal.person_name} disabled style={{ ...inputStyle, background: "var(--surface-muted)" }} />
@@ -501,7 +756,7 @@ export default function DealDetailPage() {
               onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
               style={{ ...inputStyle, marginBottom: 18 }}
             />
-            <button type="submit" className="btn-primary" style={{ width: "100%" }}>Criar tarefa</button>
+            <button type="submit" className="btn-primary" style={{ width: "100%" }}>{editingTaskId ? "Salvar tarefa" : "Criar tarefa"}</button>
           </form>
         </div>
       )}
@@ -520,6 +775,19 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, marginTop: 10 };
+
+const iconBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 26,
+  height: 26,
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "#fff",
+  color: "var(--text-faint)",
+  padding: 0,
+};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",

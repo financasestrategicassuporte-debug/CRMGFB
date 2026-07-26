@@ -43,6 +43,7 @@ const TASK_ICON: Record<string, string> = {
   reuniao: "groups",
   proposta: "task_alt",
   followup: "person",
+  whatsapp: "chat",
 };
 
 function fmtBRL(v: number | null) {
@@ -131,6 +132,17 @@ export default function CrmPage() {
     });
     setNewDeal({ company_name: "", person_name: "", phone: "", value: "" });
     setShowForm(false);
+    loadDeals();
+  }
+
+  async function moveStage(deal: Deal, delta: number) {
+    const next = deal.stage + delta;
+    if (next < 0 || next > 6) return;
+    await fetch(`/api/deals/${deal.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage: next }),
+    });
     loadDeals();
   }
 
@@ -349,6 +361,25 @@ export default function CrmPage() {
                         {deal.assignee ? deal.assignee.name : "Sem dono"}
                       </div>
                       <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDate(activity?.date ?? deal.created_at)}</div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          disabled={deal.stage === 0}
+                          onClick={() => moveStage(deal, -1)}
+                          title="Voltar etapa"
+                          style={{ ...stageNavBtnStyle, opacity: deal.stage === 0 ? 0.35 : 1 }}
+                        >
+                          <span className="msym" style={{ fontSize: 16 }}>chevron_left</span>
+                        </button>
+                        <button
+                          disabled={deal.stage === 6}
+                          onClick={() => moveStage(deal, 1)}
+                          title="Avançar etapa"
+                          style={{ ...stageNavBtnStyle, opacity: deal.stage === 6 ? 0.35 : 1 }}
+                        >
+                          <span className="msym" style={{ fontSize: 16 }}>chevron_right</span>
+                        </button>
+                      </div>
                     </div>
                     );
                   })}
@@ -433,4 +464,17 @@ const selectStyle: React.CSSProperties = {
   padding: "7px 10px",
   fontSize: 12,
   background: "#fff",
+};
+
+const stageNavBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 26,
+  height: 22,
+  borderRadius: 6,
+  border: "1px solid var(--border)",
+  background: "var(--surface-muted)",
+  color: "var(--text-faint)",
+  padding: 0,
 };

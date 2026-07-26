@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyCronSecret } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTargets, buildMessage, type ConditionJson } from "@/lib/automationEngine";
+import { runDealAutomations } from "@/lib/dealAutomationEngine";
 import { sendWhatsapp } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/email";
 
@@ -64,5 +65,7 @@ export async function GET(request: Request) {
     await admin.from("automations").update({ run_count: (rule.run_count ?? 0) + alvos.length }).eq("id", rule.id);
   }
 
-  return NextResponse.json({ disparos });
+  const dealResult = await runDealAutomations(admin);
+
+  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos });
 }
