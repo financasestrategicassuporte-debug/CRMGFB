@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8934", "--directory", "C:/Users/ULTRA/AppData/Local/Temp/claude/C--Users-ULTRA-gfb---Dash-marketing-opera--es/244a824a-8f84-4605-82ca-a1e785e0726f/scratchpad/gymplus_preview"],
       "port": 8934
+    },
+    {
+      "name": "backend-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "backend", "run", "dev"],
+      "port": 3000
     }
   ]
 }

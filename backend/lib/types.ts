@@ -717,6 +717,7 @@ export type Database = {
           objective: string | null
           owner_name: string | null
           pain_points: string | null
+          paused: boolean
           person_name: string
           phone: string | null
           pipeline: string
@@ -753,6 +754,7 @@ export type Database = {
           objective?: string | null
           owner_name?: string | null
           pain_points?: string | null
+          paused?: boolean
           person_name: string
           phone?: string | null
           pipeline: string
@@ -789,6 +791,7 @@ export type Database = {
           objective?: string | null
           owner_name?: string | null
           pain_points?: string | null
+          paused?: boolean
           person_name?: string
           phone?: string | null
           pipeline?: string

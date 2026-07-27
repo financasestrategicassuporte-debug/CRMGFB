@@ -12,6 +12,8 @@ type Deal = {
   email: string | null;
   pipeline: "quente" | "frio";
   stage: number;
+  lost: boolean;
+  paused: boolean;
   value: number | null;
   revenue: number | null;
   qualification: number | null;
@@ -45,6 +47,15 @@ const TASK_ICON: Record<string, string> = {
   followup: "person",
   whatsapp: "chat",
 };
+
+const STATUS_OPTIONS: { value: string; label: string; icon: string }[] = [
+  { value: "all", label: "Todos os status", icon: "list" },
+  { value: "andamento", label: "Em andamento", icon: "directions_walk" },
+  { value: "vendido", label: "Vendido", icon: "thumb_up" },
+  { value: "perdido", label: "Perdido", icon: "thumb_down" },
+  { value: "pausado", label: "Pausado", icon: "pause_circle" },
+  { value: "nao_pausado", label: "Não pausado", icon: "play_circle" },
+];
 
 function fmtBRL(v: number | null) {
   if (!v) return "R$ 0,00";
@@ -81,11 +92,20 @@ function isUrgent(deal: Deal) {
   return (deal.tasks ?? []).some((t) => !t.done && t.due_date && new Date(t.due_date) <= endOfToday);
 }
 
+function cardStatusBadge(deal: Deal) {
+  if (deal.lost) return { label: "Perdido", color: "#dc2626" };
+  if (deal.stage === 6) return { label: "Vendido", color: "#16a34a" };
+  if (deal.paused) return { label: "Pausado", color: "#f59e0b" };
+  return { label: "Em andamento", color: "#0ea5e9" };
+}
+
 export default function CrmPage() {
   const router = useRouter();
   const [role, setRole] = useState("admin");
   const [pipeline, setPipeline] = useState<"quente" | "frio">("quente");
   const [ownerFilter, setOwnerFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("andamento");
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +124,7 @@ export default function CrmPage() {
 
   async function loadDeals() {
     setLoading(true);
-    const params = new URLSearchParams({ pipeline });
+    const params = new URLSearchParams({ pipeline, status: statusFilter });
     if (ownerFilter !== "all") params.set("assigned_to", ownerFilter);
     const res = await fetch(`/api/deals?${params}`);
     const data = await res.json();
@@ -115,7 +135,7 @@ export default function CrmPage() {
   useEffect(() => {
     loadDeals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pipeline, ownerFilter]);
+  }, [pipeline, ownerFilter, statusFilter]);
 
   async function createDeal(e: React.FormEvent) {
     e.preventDefault();
@@ -177,7 +197,8 @@ export default function CrmPage() {
         role={role}
       />
       <div style={{ padding: "20px 20px 32px" }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button
             onClick={() => setPipeline("quente")}
             style={{
@@ -214,6 +235,80 @@ export default function CrmPage() {
             <span className="msym" style={{ fontSize: 15, color: "#38bdf8" }}>ac_unit</span>
             Funil Frio
           </button>
+        </div>
+
+        <div style={{ position: "relative" }}>
+          {showStatusMenu && <div onClick={() => setShowStatusMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+          <button
+            onClick={() => setShowStatusMenu((v) => !v)}
+            style={{
+              position: "relative",
+              zIndex: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "#fff",
+              color: "var(--text)",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>
+              {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.icon ?? "list"}
+            </span>
+            {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? "Todos os status"}
+            <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+          </button>
+          {showStatusMenu && (
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 4px)",
+                background: "#fff",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                zIndex: 20,
+                minWidth: 200,
+                padding: 6,
+              }}
+            >
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", padding: "6px 10px", textTransform: "uppercase" }}>
+                Status da negociação
+              </div>
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setStatusFilter(opt.value);
+                    setShowStatusMenu(false);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    textAlign: "left",
+                    border: "none",
+                    background: "none",
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: statusFilter === opt.value ? 700 : 500,
+                    color: statusFilter === opt.value ? "var(--accent-darker)" : "var(--text)",
+                  }}
+                >
+                  <span className="msym" style={{ fontSize: 15 }}>{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         </div>
 
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
@@ -315,9 +410,9 @@ export default function CrmPage() {
                         </div>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "#0ea5e9", fontWeight: 700 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0ea5e9", display: "inline-block" }} />
-                          Em andamento
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: cardStatusBadge(deal).color, fontWeight: 700 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: cardStatusBadge(deal).color, display: "inline-block" }} />
+                          {cardStatusBadge(deal).label}
                         </span>
                         <span className="msym" style={{ fontSize: 14, color: "var(--text-faint)" }}>info</span>
                       </div>

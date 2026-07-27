@@ -3,13 +3,22 @@ import { getCurrentProfile } from "@/lib/auth";
 import { parseBody, dbError } from "@/lib/api";
 import { dealSchema } from "@/lib/validation";
 
+/** "Status da negociação" — filtro único no topo do CRM (dropdown do
+ * mockup): combina lost/paused/stage numa única seleção pro usuário, em
+ * vez de expor cada flag como um parâmetro separado.
+ *   - andamento: ativa, não vendida, não perdida, não pausada (default)
+ *   - vendido: stage 6, não perdida
+ *   - perdido: lost = true
+ *   - pausado: paused = true
+ *   - nao_pausado: paused = false (pode incluir vendidas/perdidas)
+ *   - all: sem filtro nenhum */
 export async function GET(request: Request) {
   const { supabase } = await getCurrentProfile();
   const { searchParams } = new URL(request.url);
   const pipeline = searchParams.get("pipeline");
   const stage = searchParams.get("stage");
   const assignedTo = searchParams.get("assigned_to");
-  const includeLost = searchParams.get("lost") === "true";
+  const status = searchParams.get("status") ?? "andamento";
 
   let query = supabase
     .from("deals")
@@ -19,9 +28,27 @@ export async function GET(request: Request) {
   if (pipeline) query = query.eq("pipeline", pipeline);
   if (stage) query = query.eq("stage", Number(stage));
   if (assignedTo) query = query.eq("assigned_to", assignedTo);
-  // O kanban ativo esconde negociações perdidas por padrão — passe
-  // ?lost=true pra ver especificamente essas.
-  query = includeLost ? query.eq("lost", true) : query.eq("lost", false);
+
+  switch (status) {
+    case "andamento":
+      query = query.eq("lost", false).eq("paused", false).neq("stage", 6);
+      break;
+    case "vendido":
+      query = query.eq("stage", 6).eq("lost", false);
+      break;
+    case "perdido":
+      query = query.eq("lost", true);
+      break;
+    case "pausado":
+      query = query.eq("paused", true);
+      break;
+    case "nao_pausado":
+      query = query.eq("paused", false);
+      break;
+    case "all":
+    default:
+      break;
+  }
 
   const { data, error } = await query;
   if (error) return dbError(error);

@@ -14,6 +14,7 @@ type Deal = {
   stage: number;
   lost: boolean;
   lost_reason: string | null;
+  paused: boolean;
   value: number | null;
   revenue: number | null;
   ticket: number | null;
@@ -275,6 +276,17 @@ export default function DealDetailPage() {
     load();
   }
 
+  async function togglePaused() {
+    setBusy(true);
+    await fetch(`/api/deals/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused: !deal?.paused }),
+    });
+    setBusy(false);
+    load();
+  }
+
   async function markWon() {
     setBusy(true);
     const res = await fetch(`/api/deals/${id}/close`, { method: "POST" });
@@ -383,12 +395,19 @@ export default function DealDetailPage() {
                 {deal.company_name ? `${deal.company_name} – ${deal.person_name}` : deal.person_name}
               </h1>
               {deal.lost && <span className="badge badge-late">Perdida</span>}
+              {!deal.lost && deal.paused && <span className="badge" style={{ background: "#fef3c7", color: "#b45309" }}>Pausada</span>}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowQualify(true)} style={btnDark}>
               <span className="msym" style={{ fontSize: 16 }}>bolt</span> Qualificar SDR IA
             </button>
+            {!deal.lost && deal.stage !== 6 && (
+              <button onClick={togglePaused} disabled={busy} style={{ ...btnDark, background: deal.paused ? "var(--accent-darker)" : "var(--bg-dark)" }}>
+                <span className="msym" style={{ fontSize: 16 }}>{deal.paused ? "play_circle" : "pause_circle"}</span>
+                {deal.paused ? "Retomar" : "Pausar"}
+              </button>
+            )}
             {!deal.lost && deal.stage !== 6 && (
               <button onClick={() => setShowLostForm(true)} disabled={busy} style={btnOutlineDanger}>
                 <span className="msym" style={{ fontSize: 16 }}>thumb_down</span> Marcar perda

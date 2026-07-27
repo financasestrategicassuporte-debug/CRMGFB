@@ -60,6 +60,7 @@ export const dealSchema = z.object({
   assigned_to: z.string().uuid().nullable().optional(),
   lost: z.boolean().optional(),
   lost_reason: z.string().optional(),
+  paused: z.boolean().optional(),
 });
 
 export const dealUpdateSchema = dealSchema.partial();
