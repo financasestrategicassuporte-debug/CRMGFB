@@ -197,8 +197,7 @@ export default function CrmPage() {
         role={role}
       />
       <div style={{ padding: "20px 20px 32px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           <button
             onClick={() => setPipeline("quente")}
             style={{
@@ -235,80 +234,6 @@ export default function CrmPage() {
             <span className="msym" style={{ fontSize: 15, color: "#38bdf8" }}>ac_unit</span>
             Funil Frio
           </button>
-        </div>
-
-        <div style={{ position: "relative" }}>
-          {showStatusMenu && <div onClick={() => setShowStatusMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
-          <button
-            onClick={() => setShowStatusMenu((v) => !v)}
-            style={{
-              position: "relative",
-              zIndex: 16,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "7px 12px",
-              borderRadius: 10,
-              border: "1px solid var(--border)",
-              background: "#fff",
-              color: "var(--text)",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>
-              {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.icon ?? "list"}
-            </span>
-            {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? "Todos os status"}
-            <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
-          </button>
-          {showStatusMenu && (
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: "calc(100% + 4px)",
-                background: "#fff",
-                border: "1px solid var(--border)",
-                borderRadius: 10,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                zIndex: 20,
-                minWidth: 200,
-                padding: 6,
-              }}
-            >
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", padding: "6px 10px", textTransform: "uppercase" }}>
-                Status da negociação
-              </div>
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => {
-                    setStatusFilter(opt.value);
-                    setShowStatusMenu(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    width: "100%",
-                    textAlign: "left",
-                    border: "none",
-                    background: "none",
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: statusFilter === opt.value ? 700 : 500,
-                    color: statusFilter === opt.value ? "var(--accent-darker)" : "var(--text)",
-                  }}
-                >
-                  <span className="msym" style={{ fontSize: 15 }}>{opt.icon}</span>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         </div>
 
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
@@ -356,6 +281,79 @@ export default function CrmPage() {
             ) : (
               <span style={{ color: "var(--text-faint)" }}>Todos os SDRs e Closers</span>
             )}
+
+            <div style={{ position: "relative" }}>
+              {showStatusMenu && <div onClick={() => setShowStatusMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+              <button
+                onClick={() => setShowStatusMenu((v) => !v)}
+                style={{
+                  position: "relative",
+                  zIndex: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "#fff",
+                  color: "var(--text)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>
+                  {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.icon ?? "list"}
+                </span>
+                {STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? "Todos os status"}
+                <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+              </button>
+              {showStatusMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "calc(100% + 4px)",
+                    background: "#fff",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    zIndex: 20,
+                    minWidth: 200,
+                    padding: 6,
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", padding: "6px 10px", textTransform: "uppercase" }}>
+                    Status da negociação
+                  </div>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setStatusFilter(opt.value);
+                        setShowStatusMenu(false);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        width: "100%",
+                        textAlign: "left",
+                        border: "none",
+                        background: "none",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: statusFilter === opt.value ? 700 : 500,
+                        color: statusFilter === opt.value ? "var(--accent-darker)" : "var(--text)",
+                      }}
+                    >
+                      <span className="msym" style={{ fontSize: 15 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <span style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
             Negociações distribuídas automaticamente · clique para abrir
