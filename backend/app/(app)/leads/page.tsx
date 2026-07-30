@@ -40,6 +40,14 @@ const SOURCE_LABEL: Record<string, string> = {
   landing_page: "Landing Page",
 };
 
+const STRATEGY_OPTIONS: { value: string; icon: string; label: string; desc: string }[] = [
+  { value: "round_robin", icon: "swap_horiz", label: "Round Robin", desc: "Distribui em círculo, um lead para cada SDR." },
+  { value: "balanceamento", icon: "balance", label: "Balanceamento", desc: "Equaliza pela carga atual de cada SDR." },
+  { value: "peso", icon: "lock", label: "Peso", desc: "Mais leads para SDRs de maior conversão." },
+  { value: "prioridade", icon: "priority_high", label: "Prioridade", desc: "Leads quentes vão para os melhores." },
+  { value: "manual", icon: "back_hand", label: "Manual", desc: "Gestor distribui caso a caso." },
+];
+
 export default function LeadsRecebidosPage() {
   const router = useRouter();
   const [role, setRole] = useState("admin");
@@ -47,6 +55,7 @@ export default function LeadsRecebidosPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"quente" | "frio">("quente");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [strategy, setStrategy] = useState("round_robin");
   const [importing, setImporting] = useState<"quente" | "frio" | null>(null);
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -95,27 +104,31 @@ export default function LeadsRecebidosPage() {
     setSelected((s) => (s.size === ids.length ? new Set() : new Set(ids)));
   }
 
-  async function convertAndDistribute() {
-    if (selected.size === 0) return;
+  async function convertAndDistribute(ids: string[]) {
+    if (ids.length === 0) return;
     setProcessing(true);
     setMessage(null);
     const dealIds: string[] = [];
-    for (const id of selected) {
+    for (const id of ids) {
       const res = await fetch(`/api/leads/${id}/convert`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         dealIds.push(data.deal.id);
       }
     }
-    if (dealIds.length > 0) {
+    if (dealIds.length > 0 && strategy !== "manual") {
       await fetch("/api/leads/distribute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lead_ids: dealIds, strategy: "peso" }),
+        body: JSON.stringify({ lead_ids: dealIds, strategy }),
       });
     }
     setProcessing(false);
-    setMessage(`${dealIds.length} negociação(ões) criada(s) e distribuída(s) para os SDRs.`);
+    setMessage(
+      strategy === "manual"
+        ? `${dealIds.length} negociação(ões) criada(s). Atribua o dono manualmente em cada uma.`
+        : `${dealIds.length} negociação(ões) criada(s) e distribuída(s) para os SDRs.`
+    );
     setSelected(new Set());
     load();
   }
@@ -211,14 +224,50 @@ export default function LeadsRecebidosPage() {
           </button>
         </div>
 
-        <div className="card" style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
-            <input type="checkbox" checked={selected.size > 0 && selected.size === allIds.length} onChange={() => toggleAll(allIds)} />
-            {selected.size > 0 ? `${selected.size} selecionado(s)` : "Selecionar todos"}
-          </label>
-          <button className="btn-primary" onClick={convertAndDistribute} disabled={selected.size === 0 || processing} style={{ fontSize: 13 }}>
-            {processing ? "Processando…" : "Converter e Distribuir para SDRs"}
-          </button>
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+            <span className="msym" style={{ fontSize: 20, color: "var(--accent-darker)" }}>sync_alt</span>
+            Motor de distribuição de leads
+          </div>
+          <p style={{ color: "var(--text-faint)", fontSize: 12.5, marginBottom: 14 }}>
+            Leads do Marketing entram na plataforma e são distribuídos automaticamente aos SDRs. Escolha a estratégia.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 14 }}>
+            {STRATEGY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setStrategy(opt.value)}
+                style={{
+                  textAlign: "left",
+                  border: `1px solid ${strategy === opt.value ? "var(--accent)" : "var(--border)"}`,
+                  background: strategy === opt.value ? "var(--status-ok-bg)" : "#fff",
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <span className="msym" style={{ fontSize: 18, color: strategy === opt.value ? "var(--accent-darker)" : "var(--text-faint)", display: "block", marginBottom: 6 }}>
+                  {opt.icon}
+                </span>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{opt.label}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.3 }}>{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
+              <input type="checkbox" checked={selected.size > 0 && selected.size === allIds.length} onChange={() => toggleAll(allIds)} />
+              {selected.size > 0 ? `${selected.size} selecionado(s)` : `Nenhum selecionado — distribui os ${allIds.length} da aba`}
+            </label>
+            <button
+              className="btn-primary"
+              onClick={() => convertAndDistribute(selected.size > 0 ? [...selected] : allIds)}
+              disabled={allIds.length === 0 || processing}
+              style={{ fontSize: 13 }}
+            >
+              {processing ? "Processando…" : "Distribuir por Performance"}
+            </button>
+          </div>
         </div>
 
         {loading ? (
