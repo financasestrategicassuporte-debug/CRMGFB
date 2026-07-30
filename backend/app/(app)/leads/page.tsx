@@ -60,23 +60,34 @@ export default function LeadsRecebidosPage() {
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
+  async function loadSilently() {
     const res = await fetch("/api/leads");
     const data = await res.json();
     setLeads((data.leads ?? []).filter((l: Lead) => !l.converted_deal_id));
+  }
+
+  async function load() {
+    setLoading(true);
+    await loadSilently();
     setLoading(false);
   }
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setRole(d.profile?.role ?? "admin"));
     load();
-    // Sincroniza as duas planilhas sozinho ao abrir a página — o usuário
-    // não precisa clicar em "Importar" pra ver os leads mais recentes.
-    // Isso roda em paralelo com um sync diário automático (ver
-    // /api/cron/automations), que mantém a base em dia mesmo com a
-    // página fechada.
-    Promise.all([fetch("/api/leads/import?source=quente"), fetch("/api/leads/import?source=frio")]).then(() => load());
+
+    // Enquanto a página estiver aberta, verifica novidade nas duas
+    // planilhas a cada 20s e atualiza a lista sozinha — sem precisar de
+    // Apps Script instalado nem de um cron mais frequente, é só o
+    // navegador perguntando de tempos em tempos. Isso soma com o sync
+    // diário em segundo plano (ver /api/cron/automations), que garante
+    // que os leads entram mesmo com a página fechada.
+    function syncAndReload() {
+      Promise.all([fetch("/api/leads/import?source=quente"), fetch("/api/leads/import?source=frio")]).then(loadSilently);
+    }
+    syncAndReload();
+    const interval = setInterval(syncAndReload, 20000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
