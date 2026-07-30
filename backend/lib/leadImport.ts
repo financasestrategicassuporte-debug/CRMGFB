@@ -22,7 +22,8 @@ export async function syncLeadsFromSheet(
 
   if (novosUnicos.length === 0) return { imported: 0, skipped: novos.length };
 
-  await supabase.from("leads").insert(novosUnicos.map((l) => ({ ...l, source: `sheets_${source}` })));
+  const { error } = await supabase.from("leads").insert(novosUnicos.map((l) => ({ ...l, source: `sheets_${source}` })));
+  if (error) throw new Error(error.message);
   return { imported: novosUnicos.length, skipped: novos.length - novosUnicos.length };
 }
 
