@@ -86,6 +86,15 @@ function csvRowsToObjects(rows: string[][]): Record<string, string>[] {
   });
 }
 
+// `revenue` é numeric(12,2) e `students_count` é int4 no banco — texto
+// livre de formulário às vezes tem lixo (telefone digitado no campo
+// errado, número gigante por engano). Sem um teto sensato aqui, uma
+// única linha ruim derruba o INSERT em lote inteiro (é uma única
+// instrução SQL, tudo ou nada). Qualquer valor fora da faixa plausível
+// vira "não informado" em vez de estourar a coluna.
+const MAX_REVENUE = 50_000_000; // R$50 milhões/mês — teto generoso, mas finito
+const MAX_STUDENTS = 200_000; // maior rede de academias do Brasil não chega perto disso
+
 /** Extrai um valor numérico aproximado de faixas de faturamento em texto
  * livre ("20mil a 50mil", "Entre R$20.000 a R$30.000", "50k a 150k",
  * "Até 20 mil") — usa a média dos dois primeiros números encontrados, ou
@@ -99,7 +108,7 @@ function parseRevenueRange(text: string | undefined): number | undefined {
       const suffix = m[2]?.toLowerCase();
       return suffix === "mil" || suffix === "k" ? n * 1000 : n;
     })
-    .filter((n) => !isNaN(n) && n > 0);
+    .filter((n) => !isNaN(n) && n > 0 && n <= MAX_REVENUE);
   if (nums.length === 0) return undefined;
   if (nums.length === 1) return Math.round(nums[0]);
   return Math.round((nums[0] + nums[1]) / 2);
@@ -108,7 +117,9 @@ function parseRevenueRange(text: string | undefined): number | undefined {
 function parseStudentsCount(text: string | undefined): number | undefined {
   if (!text) return undefined;
   const match = text.match(/\d+/);
-  return match ? parseInt(match[0], 10) : undefined;
+  if (!match) return undefined;
+  const n = parseInt(match[0], 10);
+  return n > 0 && n <= MAX_STUDENTS ? n : undefined;
 }
 
 function normalizePhone(phone: string | undefined): string | undefined {
