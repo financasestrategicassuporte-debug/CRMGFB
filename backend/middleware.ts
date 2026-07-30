@@ -44,6 +44,7 @@ export const config = {
     "/api/:path*",
     "/dashboard/:path*",
     "/crm/:path*",
+    "/leads/:path*",
     "/time/:path*",
     "/clientes/:path*",
     "/automacoes/:path*",

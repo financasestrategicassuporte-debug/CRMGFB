@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { dbError } from "@/lib/api";
 
-/** Converts a raw landing-page lead into a "frio" CRM deal, the same
- * hand-off the Meta Ads pipeline does in the original dashboard. */
+/** Converts a raw lead into a CRM deal. Pipeline (quente/frio) is
+ * inferred from the lead's `source` — leads imported from the webinar
+ * application sheet (`sheets_quente`) become "quente" deals, everything
+ * else (Meta Lead Ads sheet, landing page, etc.) becomes "frio". */
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const { supabase } = await getCurrentProfile();
 
@@ -21,7 +23,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
   const { data: deal, error: dealError } = await supabase
     .from("deals")
     .insert({
-      pipeline: "frio",
+      pipeline: lead.source?.includes("quente") ? "quente" : "frio",
       person_name: lead.name,
       phone: lead.phone,
       email: lead.email,

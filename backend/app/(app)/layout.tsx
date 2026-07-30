@@ -14,6 +14,7 @@ const NAV_GROUPS_ADMIN = [
     items: [
       { href: "/dashboard", icon: "grid_view", label: "Dashboard" },
       { href: "/crm", icon: "contacts", label: "CRM · Todos" },
+      { href: "/leads", icon: "inbox", label: "Leads Recebidos" },
       { href: "/automacoes", icon: "bolt", label: "Automações" },
     ],
   },
