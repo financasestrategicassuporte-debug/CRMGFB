@@ -106,12 +106,15 @@ export default function CrmPage() {
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("andamento");
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [search, setSearch] = useState("");
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [distributing, setDistributing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newDeal, setNewDeal] = useState({ company_name: "", person_name: "", phone: "", value: "" });
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -155,15 +158,28 @@ export default function CrmPage() {
     loadDeals();
   }
 
-  async function moveStage(deal: Deal, delta: number) {
-    const next = deal.stage + delta;
-    if (next < 0 || next > 6) return;
-    await fetch(`/api/deals/${deal.id}`, {
+  async function moveToStage(dealId: string, stage: number) {
+    await fetch(`/api/deals/${dealId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage: next }),
+      body: JSON.stringify({ stage }),
     });
     loadDeals();
+  }
+
+  function moveStage(deal: Deal, delta: number) {
+    const next = deal.stage + delta;
+    if (next < 0 || next > 6) return;
+    moveToStage(deal.id, next);
+  }
+
+  function handleDrop(stage: number) {
+    setDragOverStage(null);
+    if (!draggedId) return;
+    const dragged = deals.find((d) => d.id === draggedId);
+    setDraggedId(null);
+    if (!dragged || dragged.stage === stage) return;
+    moveToStage(draggedId, stage);
   }
 
   async function distribute() {
@@ -182,10 +198,20 @@ export default function CrmPage() {
     loadDeals();
   }
 
+  const searchTerm = search.trim().toLowerCase();
+  const visibleDeals = searchTerm
+    ? deals.filter(
+        (d) =>
+          d.person_name.toLowerCase().includes(searchTerm) ||
+          (d.company_name ?? "").toLowerCase().includes(searchTerm) ||
+          (d.phone ?? "").toLowerCase().includes(searchTerm)
+      )
+    : deals;
+
   const columns = STAGES.map((label, stage) => ({
     stage,
     label,
-    deals: deals.filter((d) => d.stage === stage),
+    deals: visibleDeals.filter((d) => d.stage === stage),
   }));
 
   return (
@@ -197,7 +223,8 @@ export default function CrmPage() {
         role={role}
       />
       <div style={{ padding: "20px 20px 32px" }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button
             onClick={() => setPipeline("quente")}
             style={{
@@ -234,6 +261,27 @@ export default function CrmPage() {
             <span className="msym" style={{ fontSize: 15, color: "#38bdf8" }}>ac_unit</span>
             Funil Frio
           </button>
+        </div>
+
+        <div style={{ position: "relative", minWidth: 240 }}>
+          <span className="msym" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "var(--text-faint)" }}>
+            search
+          </span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou telefone…"
+            style={{
+              width: "100%",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "7px 12px 7px 34px",
+              fontSize: 13,
+              background: "#fff",
+              color: "var(--text)",
+            }}
+          />
+        </div>
         </div>
 
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
@@ -367,7 +415,19 @@ export default function CrmPage() {
             {columns.map((col) => {
               const total = col.deals.reduce((sum, d) => sum + (d.value ?? 0), 0);
               return (
-              <div key={col.stage} style={{ minWidth: 0 }}>
+              <div
+                key={col.stage}
+                style={{ minWidth: 0 }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragOverStage !== col.stage) setDragOverStage(col.stage);
+                }}
+                onDragLeave={() => setDragOverStage((s) => (s === col.stage ? null : s))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  handleDrop(col.stage);
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 4 }}>
                   <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={col.label}>
                     {col.label} <span style={{ color: "var(--text-faint)", fontWeight: 400 }}>({col.deals.length})</span>
@@ -376,7 +436,18 @@ export default function CrmPage() {
                     {fmtBRL(total)}
                   </span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    minHeight: 40,
+                    borderRadius: 10,
+                    outline: dragOverStage === col.stage ? "2px dashed var(--accent)" : "none",
+                    outlineOffset: 4,
+                    transition: "outline 0.1s ease",
+                  }}
+                >
                   {col.deals.map((deal) => {
                     const activity = pendingActivity(deal);
                     const urgent = isUrgent(deal);
@@ -384,7 +455,21 @@ export default function CrmPage() {
                     <div
                       key={deal.id}
                       className="card"
-                      style={{ cursor: "pointer", padding: 10, borderColor: urgent ? "#dc2626" : undefined }}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedId(deal.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => {
+                        setDraggedId(null);
+                        setDragOverStage(null);
+                      }}
+                      style={{
+                        cursor: "grab",
+                        padding: 10,
+                        borderColor: urgent ? "#dc2626" : undefined,
+                        opacity: draggedId === deal.id ? 0.4 : 1,
+                      }}
                       onClick={() => router.push(`/crm/${deal.id}`)}
                     >
                       {urgent && (
