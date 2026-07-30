@@ -71,6 +71,13 @@ export default function LeadsRecebidosPage() {
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setRole(d.profile?.role ?? "admin"));
     load();
+    // Sincroniza as duas planilhas sozinho ao abrir a página — o usuário
+    // não precisa clicar em "Importar" pra ver os leads mais recentes.
+    // Isso roda em paralelo com um sync diário automático (ver
+    // /api/cron/automations), que mantém a base em dia mesmo com a
+    // página fechada.
+    Promise.all([fetch("/api/leads/import?source=quente"), fetch("/api/leads/import?source=frio")]).then(() => load());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -85,7 +92,7 @@ export default function LeadsRecebidosPage() {
     setImporting(null);
     setMessage(
       res.ok
-        ? `Importação ${source}: ${data.imported?.length ?? 0} novo(s) lead(s), ${data.skipped ?? 0} já existente(s).`
+        ? `Importação ${source}: ${data.imported ?? 0} novo(s) lead(s), ${data.skipped ?? 0} já existente(s).`
         : "Não foi possível importar agora."
     );
     load();

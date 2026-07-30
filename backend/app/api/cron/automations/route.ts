@@ -3,14 +3,19 @@ import { verifyCronSecret } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTargets, buildMessage, type ConditionJson } from "@/lib/automationEngine";
 import { runDealAutomations } from "@/lib/dealAutomationEngine";
+import { syncLeadsFromSheet } from "@/lib/leadImport";
 import { sendWhatsapp } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/email";
 
-/** Roda periodicamente (ver vercel.json) e avalia todas as automações
- * ativas contra o estado atual dos clientes, evitando disparar duas vezes
- * no mesmo dia para o mesmo cliente (checa `automation_runs` de hoje
- * antes de agir). Envio de verdade passa pelos adapters de
- * `lib/integrations/*` — sem credencial configurada, eles só logam. */
+/** Roda 1x/dia (ver vercel.json) e faz três coisas: (1) avalia as
+ * automações de playbook ativas contra o estado atual dos clientes,
+ * evitando disparar duas vezes no mesmo dia (checa `automation_runs` de
+ * hoje antes de agir) — envio de verdade passa pelos adapters de
+ * `lib/integrations/*`, que sem credencial configurada só logam; (2) roda
+ * as automações de etapa do CRM (`runDealAutomations`); (3) sincroniza os
+ * leads novos das duas planilhas (quente/frio) — o mesmo sync também
+ * roda toda vez que alguém abre `/leads`, então isso é só o "modo
+ * automático" pra quando ninguém está com a página aberta. */
 export async function GET(request: Request) {
   const forbidden = verifyCronSecret(request);
   if (forbidden) return forbidden;
@@ -67,5 +72,10 @@ export async function GET(request: Request) {
 
   const dealResult = await runDealAutomations(admin);
 
-  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos });
+  const [leadsQuente, leadsFrio] = await Promise.all([
+    syncLeadsFromSheet(admin, "quente"),
+    syncLeadsFromSheet(admin, "frio"),
+  ]);
+
+  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio });
 }
