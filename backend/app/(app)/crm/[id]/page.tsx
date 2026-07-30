@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Banner } from "../../banner";
+import { QualifyWizard } from "./qualify-wizard";
 
 type Deal = {
   id: string;
@@ -150,6 +151,7 @@ export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [role, setRole] = useState("admin");
+  const [profileName, setProfileName] = useState("");
   const [deal, setDeal] = useState<Deal | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -160,7 +162,6 @@ export default function DealDetailPage() {
   const [historyTab, setHistoryTab] = useState("Histórico");
   const [noteText, setNoteText] = useState("");
   const [showQualify, setShowQualify] = useState(false);
-  const [qualifyForm, setQualifyForm] = useState({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskForm, setTaskForm] = useState({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
@@ -183,7 +184,10 @@ export default function DealDetailPage() {
   }
 
   useEffect(() => {
-    fetch("/api/auth/me").then((r) => r.json()).then((d) => setRole(d.profile?.role ?? "admin"));
+    fetch("/api/auth/me").then((r) => r.json()).then((d) => {
+      setRole(d.profile?.role ?? "admin");
+      setProfileName(d.profile?.name ?? "");
+    });
     fetch("/api/team").then((r) => r.json()).then((d) => setTeam(d.team ?? []));
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,24 +233,6 @@ export default function DealDetailPage() {
       body: JSON.stringify({ body: noteText }),
     });
     setNoteText("");
-    load();
-  }
-
-  async function submitQualify(e: React.FormEvent) {
-    e.preventDefault();
-    await fetch(`/api/deals/${id}/qualify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        students_count: Number(qualifyForm.students_count) || 0,
-        revenue: Number(qualifyForm.revenue) || 0,
-        pain_level: qualifyForm.pain_level,
-        urgency: qualifyForm.urgency,
-        uses_software: qualifyForm.uses_software,
-      }),
-    });
-    setShowQualify(false);
-    setQualifyForm({ students_count: "", revenue: "", pain_level: 3, urgency: 3, uses_software: false });
     load();
   }
 
@@ -621,31 +607,13 @@ export default function DealDetailPage() {
       </div>
 
       {showQualify && (
-        <div style={overlayStyle}>
-          <form onSubmit={submitQualify} className="card" style={{ width: 380, background: "#fff" }}>
-            <h2 style={{ marginTop: 0, fontSize: 16 }}>Qualificar — {deal.person_name}</h2>
-            <label style={labelStyle}>Quantidade de alunos</label>
-            <input required type="number" value={qualifyForm.students_count} onChange={(e) => setQualifyForm({ ...qualifyForm, students_count: e.target.value })} style={inputStyle} />
-            <label style={labelStyle}>Faturamento mensal (R$)</label>
-            <input required type="number" value={qualifyForm.revenue} onChange={(e) => setQualifyForm({ ...qualifyForm, revenue: e.target.value })} style={inputStyle} />
-            <label style={labelStyle}>Dor (1-5)</label>
-            <input type="range" min={1} max={5} value={qualifyForm.pain_level} onChange={(e) => setQualifyForm({ ...qualifyForm, pain_level: Number(e.target.value) })} style={{ width: "100%" }} />
-            <label style={labelStyle}>Urgência (1-5)</label>
-            <input type="range" min={1} max={5} value={qualifyForm.urgency} onChange={(e) => setQualifyForm({ ...qualifyForm, urgency: Number(e.target.value) })} style={{ width: "100%" }} />
-            <label style={{ ...labelStyle, display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="checkbox" checked={qualifyForm.uses_software} onChange={(e) => setQualifyForm({ ...qualifyForm, uses_software: e.target.checked })} />
-              Já usa CRM/ferramenta hoje
-            </label>
-            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <button type="button" onClick={() => setShowQualify(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
-                Voltar
-              </button>
-              <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-                Gerar diagnóstico
-              </button>
-            </div>
-          </form>
-        </div>
+        <QualifyWizard
+          dealId={id}
+          personName={deal.person_name}
+          sdrNome={deal.assignee?.name ?? profileName}
+          onClose={() => setShowQualify(false)}
+          onSaved={load}
+        />
       )}
 
       {showLostForm && (

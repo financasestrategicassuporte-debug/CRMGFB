@@ -67,6 +67,7 @@ export const dealUpdateSchema = dealSchema.partial();
 
 export const dealNoteSchema = z.object({
   body: z.string().min(1),
+  is_ai_generated: z.boolean().optional(),
 });
 
 export const dealTaskSchema = z.object({
@@ -79,14 +80,6 @@ export const dealTaskSchema = z.object({
 
 export const dealTaskUpdateSchema = dealTaskSchema.partial().extend({
   done: z.boolean().optional(),
-});
-
-export const qualifyDealSchema = z.object({
-  students_count: z.number().int().nonnegative(),
-  revenue: z.number().nonnegative(),
-  pain_level: z.number().int().min(1).max(5),
-  urgency: z.number().int().min(1).max(5),
-  uses_software: z.boolean(),
 });
 
 export const dealAutomationSchema = z.object({

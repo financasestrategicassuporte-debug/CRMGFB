@@ -1,7 +1,7 @@
 /** "IA da conversa" do módulo Chats: resumo/intenção/objeção/próximo
- * passo por palavra-chave, no mesmo espírito determinístico de
- * `scoreLead` — sem chamar nenhum provedor de LLM externo. Roda toda vez
- * que uma mensagem inbound é registrada em `POST /chats/:id/messages`. */
+ * passo por palavra-chave — sem chamar nenhum provedor de LLM externo.
+ * Roda toda vez que uma mensagem inbound é registrada em
+ * `POST /chats/:id/messages`. */
 
 export type ChatAnalysis = {
   resumo: string;

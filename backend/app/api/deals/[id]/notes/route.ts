@@ -21,7 +21,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const { data, error } = await supabase
     .from("deal_notes")
-    .insert({ deal_id: params.id, body: parsed.data.body, author_id: user?.id })
+    .insert({
+      deal_id: params.id,
+      body: parsed.data.body,
+      author_id: user?.id,
+      is_ai_generated: parsed.data.is_ai_generated ?? false,
+    })
     .select()
     .single();
   if (error) return dbError(error);
