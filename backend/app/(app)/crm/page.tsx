@@ -67,6 +67,11 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function fmtDateShort(isoDate: string) {
+  const [y, m, d] = isoDate.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
 /** Tarefa aberta mais próxima do vencimento — prioriza a lista real de
  * tarefas (deal_tasks); se o deal ainda não tem nenhuma, cai pro campo
  * legado (task_desc/task_type/task_date) que os dados de exemplo usam. */
@@ -106,6 +111,9 @@ export default function CrmPage() {
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("andamento");
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDateMenu, setShowDateMenu] = useState(false);
   const [search, setSearch] = useState("");
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -199,14 +207,16 @@ export default function CrmPage() {
   }
 
   const searchTerm = search.trim().toLowerCase();
-  const visibleDeals = searchTerm
-    ? deals.filter(
-        (d) =>
-          d.person_name.toLowerCase().includes(searchTerm) ||
-          (d.company_name ?? "").toLowerCase().includes(searchTerm) ||
-          (d.phone ?? "").toLowerCase().includes(searchTerm)
-      )
-    : deals;
+  const visibleDeals = deals.filter((d) => {
+    const matchesSearch =
+      !searchTerm ||
+      d.person_name.toLowerCase().includes(searchTerm) ||
+      (d.company_name ?? "").toLowerCase().includes(searchTerm) ||
+      (d.phone ?? "").toLowerCase().includes(searchTerm);
+    const createdDate = d.created_at.slice(0, 10);
+    const matchesDate = (!dateFrom || createdDate >= dateFrom) && (!dateTo || createdDate <= dateTo);
+    return matchesSearch && matchesDate;
+  });
 
   const columns = STAGES.map((label, stage) => ({
     stage,
@@ -399,6 +409,85 @@ export default function CrmPage() {
                       {opt.label}
                     </button>
                   ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ position: "relative" }}>
+              {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+              <button
+                onClick={() => setShowDateMenu((v) => !v)}
+                style={{
+                  position: "relative",
+                  zIndex: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "#fff",
+                  color: "var(--text)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>calendar_month</span>
+                {dateFrom || dateTo
+                  ? `${dateFrom ? fmtDateShort(dateFrom) : "…"} – ${dateTo ? fmtDateShort(dateTo) : "…"}`
+                  : "Período"}
+                <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+              </button>
+              {showDateMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "calc(100% + 4px)",
+                    background: "#fff",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    zIndex: 20,
+                    minWidth: 230,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
+                    Filtrar por data de criação
+                  </div>
+                  <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
+                  />
+                  <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Até</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 10 }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => {
+                        setDateFrom("");
+                        setDateTo("");
+                      }}
+                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: "6px 0", fontSize: 12 }}
+                    >
+                      Limpar
+                    </button>
+                    <button
+                      onClick={() => setShowDateMenu(false)}
+                      className="btn-primary"
+                      style={{ flex: 1, padding: "6px 0", fontSize: 12 }}
+                    >
+                      Aplicar
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
