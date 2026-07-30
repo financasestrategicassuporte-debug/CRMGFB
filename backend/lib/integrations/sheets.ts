@@ -125,8 +125,10 @@ async function fetchSheetRows(spreadsheetId: string): Promise<Record<string, str
 }
 
 /** Funil quente: aplicação do webinário (Nome Completo, Telefone, E-mail,
- * Nome da Academia, alunos, faturamento, dificuldades…). */
-function mapQuenteRow(row: Record<string, string>): SheetLead | null {
+ * Nome da Academia, alunos, faturamento, dificuldades…). Exportada porque
+ * o webhook (`/api/leads/webhook`) recebe a mesma linha em JSON — do
+ * Apps Script — e precisa mapear com a lógica exata. */
+export function mapQuenteRow(row: Record<string, string>): SheetLead | null {
   const name = row["Nome Completo"];
   if (!name) return null;
   const dificuldades = row['Escreva aqui as suas "3" MAIORES DIFICULDADES que você tem na sua ACADEMIA:'];
@@ -145,7 +147,7 @@ function mapQuenteRow(row: Record<string, string>): SheetLead | null {
 /** Funil frio: exportação de Meta Lead Ads (full_name, phone_number,
  * email, campaign_name, adset_name, ad_name…). Descarta os leads de
  * teste que a própria Meta insere ("<test lead: ...>"/test@meta.com). */
-function mapFrioRow(row: Record<string, string>): SheetLead | null {
+export function mapFrioRow(row: Record<string, string>): SheetLead | null {
   const name = row["full_name"];
   const email = row["email"];
   if (!name || name.includes("<test lead") || email === "test@meta.com") return null;

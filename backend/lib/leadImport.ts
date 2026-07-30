@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
-import { importLeadsFromSheet } from "@/lib/integrations/sheets";
+import { importLeadsFromSheet, type SheetLead } from "@/lib/integrations/sheets";
 
 export type SyncResult = { imported: number; skipped: number };
 
@@ -24,4 +24,25 @@ export async function syncLeadsFromSheet(
 
   await supabase.from("leads").insert(novosUnicos.map((l) => ({ ...l, source: `sheets_${source}` })));
   return { imported: novosUnicos.length, skipped: novos.length - novosUnicos.length };
+}
+
+/** Insere um único lead já mapeado (vindo do webhook em tempo real do
+ * Apps Script) se ainda não existir um com o mesmo telefone/e-mail.
+ * Mesmo dedupe do sync em lote, mas para uma linha só. */
+export async function insertLeadIfNew(
+  supabase: SupabaseClient<Database>,
+  lead: SheetLead
+): Promise<{ inserted: boolean; lead?: Record<string, unknown> }> {
+  if (lead.phone || lead.email) {
+    const orFilters = [
+      lead.phone ? `phone.eq.${lead.phone}` : null,
+      lead.email ? `email.eq.${lead.email}` : null,
+    ].filter(Boolean) as string[];
+    const { data: existing } = await supabase.from("leads").select("id").or(orFilters.join(",")).limit(1);
+    if (existing && existing.length > 0) return { inserted: false };
+  }
+
+  const { data, error } = await supabase.from("leads").insert(lead).select().single();
+  if (error) throw new Error(error.message);
+  return { inserted: true, lead: data };
 }

@@ -4,11 +4,14 @@ import { updateSession } from "@/lib/supabase/middleware";
 // Public endpoints that must work without a session: the login call
 // itself, POSTing a new lead from the public landing page (GET on
 // /api/leads still requires a session — that's the team reading leads),
-// the WhatsApp webhook (Meta calls it directly, no user session), and the
-// cron routes (Vercel Cron calls them with a bearer secret instead).
+// the WhatsApp webhook (Meta calls it directly, no user session), the
+// leads webhook (Google Apps Script calls it directly, authenticated via
+// LEADS_WEBHOOK_SECRET instead of a session), and the cron routes
+// (Vercel Cron calls them with a bearer secret instead).
 function isPublic(pathname: string, method: string) {
   if (pathname === "/api/auth/login") return true;
   if (pathname === "/api/leads" && method === "POST") return true;
+  if (pathname === "/api/leads/webhook" && method === "POST") return true;
   if (pathname === "/api/webhooks/whatsapp") return true;
   if (pathname.startsWith("/api/cron/")) return true;
   return false;
