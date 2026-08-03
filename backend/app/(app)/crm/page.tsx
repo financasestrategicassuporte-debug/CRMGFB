@@ -123,6 +123,13 @@ export default function CrmPage() {
   const [newDeal, setNewDeal] = useState({ company_name: "", person_name: "", phone: "", value: "" });
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [bulkMenu, setBulkMenu] = useState<"status" | "mover" | "transferir" | "valor" | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkValue, setBulkValue] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -147,6 +154,11 @@ export default function CrmPage() {
     loadDeals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pipeline, ownerFilter, statusFilter]);
+
+  useEffect(() => {
+    setPage(1);
+    setSelectedIds(new Set());
+  }, [pipeline, ownerFilter, statusFilter, dateFrom, dateTo, search, viewMode]);
 
   async function createDeal(e: React.FormEvent) {
     e.preventDefault();
@@ -206,6 +218,84 @@ export default function CrmPage() {
     loadDeals();
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(ids: string[]) {
+    setSelectedIds((s) => (ids.every((id) => s.has(id)) ? new Set() : new Set(ids)));
+  }
+
+  async function bulkPatch(payload: Record<string, unknown>) {
+    setBulkBusy(true);
+    await Promise.all(
+      [...selectedIds].map((id) =>
+        fetch(`/api/deals/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      )
+    );
+    setBulkBusy(false);
+    setBulkMenu(null);
+    setSelectedIds(new Set());
+    loadDeals();
+  }
+
+  async function bulkStatus(status: "andamento" | "perdido" | "pausado" | "vendido") {
+    if (status === "vendido") {
+      setBulkBusy(true);
+      await Promise.all([...selectedIds].map((id) => fetch(`/api/deals/${id}/close`, { method: "POST" })));
+      setBulkBusy(false);
+      setBulkMenu(null);
+      setSelectedIds(new Set());
+      loadDeals();
+      return;
+    }
+    if (status === "andamento") return bulkPatch({ lost: false, paused: false });
+    if (status === "perdido") return bulkPatch({ lost: true });
+    return bulkPatch({ paused: true });
+  }
+
+  async function bulkDelete() {
+    if (!confirm(`Excluir ${selectedIds.size} negociação(ões)? Essa ação não pode ser desfeita.`)) return;
+    setBulkBusy(true);
+    await Promise.all([...selectedIds].map((id) => fetch(`/api/deals/${id}`, { method: "DELETE" })));
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    loadDeals();
+  }
+
+  function bulkExport() {
+    const rows = deals.filter((d) => selectedIds.has(d.id));
+    const header = ["Negociação", "Responsável", "Qualificação", "Etapa", "Valor", "Data de criação", "Status"];
+    const lines = rows.map((d) =>
+      [
+        `"${(d.company_name ? `${d.company_name} - ${d.person_name}` : d.person_name).replace(/"/g, '""')}"`,
+        `"${d.assignee?.name ?? "Sem dono"}"`,
+        d.qualification ?? "",
+        `"${STAGES[d.stage]}"`,
+        d.value ?? "",
+        d.created_at.slice(0, 10),
+        `"${cardStatusBadge(d).label}"`,
+      ].join(",")
+    );
+    const csv = [header.join(","), ...lines].join("\n");
+    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `negociacoes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const searchTerm = search.trim().toLowerCase();
   const visibleDeals = deals.filter((d) => {
     const matchesSearch =
@@ -223,6 +313,11 @@ export default function CrmPage() {
     label,
     deals: visibleDeals.filter((d) => d.stage === stage),
   }));
+
+  const totalPages = Math.max(1, Math.ceil(visibleDeals.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedDeals = visibleDeals.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedIds = pagedDeals.map((d) => d.id);
 
   return (
     <div>
@@ -497,8 +592,255 @@ export default function CrmPage() {
           </span>
         </div>
 
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+            <button
+              onClick={() => setViewMode("kanban")}
+              title="Visualização em quadro"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 32,
+                border: "none",
+                background: viewMode === "kanban" ? "var(--bg-dark)" : "#fff",
+                color: viewMode === "kanban" ? "#fff" : "var(--text-faint)",
+              }}
+            >
+              <span className="msym" style={{ fontSize: 18 }}>view_column</span>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              title="Visualização em lista"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 32,
+                border: "none",
+                background: viewMode === "list" ? "var(--bg-dark)" : "#fff",
+                color: viewMode === "list" ? "#fff" : "var(--text-faint)",
+              }}
+            >
+              <span className="msym" style={{ fontSize: 18 }}>view_list</span>
+            </button>
+          </div>
+
+          {selectedIds.size > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, background: "var(--bg-dark)", borderRadius: 10, padding: "8px 14px", flexWrap: "wrap" }}>
+              {bulkMenu && <div onClick={() => setBulkMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 25 }} />}
+              <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{selectedIds.size} selecionado(s)</span>
+              <button onClick={() => setSelectedIds(new Set())} style={{ color: "var(--accent)", background: "none", border: "none", fontSize: 12.5, fontWeight: 700 }}>
+                Limpar seleção
+              </button>
+              <div style={{ flex: 1 }} />
+
+              <div style={{ position: "relative", zIndex: 26 }}>
+                <button onClick={() => setBulkMenu(bulkMenu === "transferir" ? null : "transferir")} disabled={bulkBusy} style={bulkActionBtnStyle}>
+                  Transferir
+                </button>
+                {bulkMenu === "transferir" && (
+                  <div style={bulkDropdownStyle}>
+                    {team.map((t) => (
+                      <button key={t.id} onClick={() => bulkPatch({ assigned_to: t.id })} style={bulkDropdownItemStyle}>
+                        {t.name}
+                      </button>
+                    ))}
+                    {team.length === 0 && <div style={{ padding: 10, fontSize: 12, color: "var(--text-faint)" }}>Nenhum SDR/Closer cadastrado</div>}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ position: "relative", zIndex: 26 }}>
+                <button onClick={() => setBulkMenu(bulkMenu === "status" ? null : "status")} disabled={bulkBusy} style={bulkActionBtnStyle}>
+                  Alterar status
+                </button>
+                {bulkMenu === "status" && (
+                  <div style={bulkDropdownStyle}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", padding: "6px 10px", textTransform: "uppercase" }}>Alterar status</div>
+                    <button onClick={() => bulkStatus("andamento")} style={bulkDropdownItemStyle}>
+                      <span className="msym" style={{ fontSize: 15 }}>directions_walk</span> Em andamento
+                    </button>
+                    <button onClick={() => bulkStatus("perdido")} style={bulkDropdownItemStyle}>
+                      <span className="msym" style={{ fontSize: 15 }}>thumb_down</span> Perdido
+                    </button>
+                    <button onClick={() => bulkStatus("pausado")} style={bulkDropdownItemStyle}>
+                      <span className="msym" style={{ fontSize: 15 }}>pause_circle</span> Pausado
+                    </button>
+                    <button onClick={() => bulkStatus("vendido")} style={bulkDropdownItemStyle}>
+                      <span className="msym" style={{ fontSize: 15 }}>thumb_up</span> Vendido
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ position: "relative", zIndex: 26 }}>
+                <button onClick={() => setBulkMenu(bulkMenu === "valor" ? null : "valor")} disabled={bulkBusy} style={bulkActionBtnStyle}>
+                  Adicionar ou Alterar
+                </button>
+                {bulkMenu === "valor" && (
+                  <div style={{ ...bulkDropdownStyle, padding: 10, minWidth: 200 }}>
+                    <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Valor da negociação (R$)</label>
+                    <input
+                      type="number"
+                      value={bulkValue}
+                      onChange={(e) => setBulkValue(e.target.value)}
+                      style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
+                    />
+                    <button className="btn-primary" style={{ width: "100%", fontSize: 12, padding: "6px 0" }} onClick={() => bulkPatch({ value: Number(bulkValue) || 0 })}>
+                      Aplicar
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ position: "relative", zIndex: 26 }}>
+                <button onClick={() => setBulkMenu(bulkMenu === "mover" ? null : "mover")} disabled={bulkBusy} style={bulkActionBtnStyle}>
+                  Mover
+                </button>
+                {bulkMenu === "mover" && (
+                  <div style={bulkDropdownStyle}>
+                    {STAGES.map((label, i) => (
+                      <button key={label} onClick={() => bulkPatch({ stage: i })} style={bulkDropdownItemStyle}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button onClick={bulkExport} disabled={bulkBusy} style={bulkActionBtnStyle}>
+                Exportar
+              </button>
+              <button onClick={bulkDelete} disabled={bulkBusy} style={{ ...bulkActionBtnStyle, color: "#f87171" }}>
+                Excluir
+              </button>
+            </div>
+          )}
+        </div>
+
         {loading ? (
           <p>Carregando…</p>
+        ) : viewMode === "list" ? (
+          <>
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "var(--surface-muted)", textAlign: "left" }}>
+                    <th style={thStyle}>
+                      <input
+                        type="checkbox"
+                        checked={pagedIds.length > 0 && pagedIds.every((id) => selectedIds.has(id))}
+                        onChange={() => toggleSelectAll(pagedIds)}
+                      />
+                    </th>
+                    <th style={thStyle}>NEGOCIAÇÕES</th>
+                    <th style={thStyle}>RESPONSÁVEL</th>
+                    <th style={thStyle}>QUALIFICAÇÃO</th>
+                    <th style={thStyle}>ETAPA DO FUNIL</th>
+                    <th style={thStyle}>VALOR TOTAL</th>
+                    <th style={thStyle}>DATA DE CRIAÇÃO</th>
+                    <th style={thStyle}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedDeals.map((deal) => {
+                    const status = cardStatusBadge(deal);
+                    return (
+                      <tr key={deal.id} style={{ borderTop: "1px solid var(--border)", background: selectedIds.has(deal.id) ? "var(--status-ok-bg)" : "transparent" }}>
+                        <td style={tdStyle}>
+                          <input type="checkbox" checked={selectedIds.has(deal.id)} onChange={() => toggleSelect(deal.id)} />
+                        </td>
+                        <td style={{ ...tdStyle, cursor: "pointer", color: "var(--accent-darker)", fontWeight: 700 }} onClick={() => router.push(`/crm/${deal.id}`)}>
+                          {deal.company_name ? `${deal.company_name} – ${deal.person_name}` : deal.person_name}
+                        </td>
+                        <td style={tdStyle}>{deal.assignee?.name ?? "Sem dono"}</td>
+                        <td style={tdStyle}>{deal.qualification ?? "—"}</td>
+                        <td style={tdStyle}>{STAGES[deal.stage]}</td>
+                        <td style={tdStyle}>
+                          {deal.value ? (
+                            fmtBRL(deal.value)
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedIds(new Set([deal.id]));
+                                setBulkMenu("valor");
+                              }}
+                              style={{ border: "none", background: "none", color: "var(--accent-darker)", fontWeight: 700, fontSize: 12.5 }}
+                            >
+                              Adicionar valor
+                            </button>
+                          )}
+                        </td>
+                        <td style={tdStyle}>{deal.created_at.slice(0, 10).split("-").reverse().join("/")}</td>
+                        <td style={tdStyle}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 4, color: status.color, fontWeight: 700, fontSize: 12 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: status.color, display: "inline-block" }} />
+                            {status.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {pagedDeals.length === 0 && (
+                    <tr>
+                      <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--text-faint)" }}>
+                        Nenhuma negociação encontrada.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, fontSize: 12.5, color: "var(--text-faint)", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                Exibindo {pagedDeals.length} de {visibleDeals.length} negociações
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  style={{ ...selectStyle, padding: "4px 8px" }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{ border: "none", background: "none", color: currentPage === 1 ? "var(--border)" : "var(--accent-darker)", fontWeight: 700 }}
+                >
+                  Anterior
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .slice(0, 6)
+                  .map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      style={{ border: "none", background: "none", color: p === currentPage ? "var(--accent-darker)" : "var(--text-faint)", fontWeight: p === currentPage ? 800 : 500 }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{ border: "none", background: "none", color: currentPage === totalPages ? "var(--border)" : "var(--accent-darker)", fontWeight: 700 }}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 10, overflowX: "auto" }}>
             {columns.map((col) => {
@@ -744,4 +1086,54 @@ const stageNavBtnStyle: React.CSSProperties = {
   background: "var(--surface-muted)",
   color: "var(--text-faint)",
   padding: 0,
+};
+
+const thStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--text-faint)",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  whiteSpace: "nowrap",
+};
+
+const bulkActionBtnStyle: React.CSSProperties = {
+  border: "none",
+  background: "none",
+  color: "#fff",
+  fontSize: 12.5,
+  fontWeight: 700,
+  padding: "4px 6px",
+};
+
+const bulkDropdownStyle: React.CSSProperties = {
+  position: "absolute",
+  right: 0,
+  top: "calc(100% + 6px)",
+  background: "#fff",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+  minWidth: 190,
+  padding: 6,
+  color: "var(--text)",
+};
+
+const bulkDropdownItemStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  textAlign: "left",
+  border: "none",
+  background: "none",
+  padding: "8px 10px",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text)",
 };
