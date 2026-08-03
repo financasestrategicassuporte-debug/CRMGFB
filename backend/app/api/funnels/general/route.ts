@@ -5,15 +5,29 @@ import { computeFunnel, computeProductEconomics } from "@/lib/funnels";
 
 /** Funil consolidado + economics gerais (CAC/ROAS/investimento), somando
  * `ad_spend` sem produto (product_id null = investimento geral) — é o
- * que alimenta os cards do topo do Dashboard Geral. */
-export async function GET() {
+ * que alimenta os cards do topo do Dashboard Geral. Aceita `?from=` e
+ * `?to=` (YYYY-MM-DD) pra filtrar por data de criação do deal/período do
+ * investimento — usado pelo filtro "Período" do dashboard. */
+export async function GET(request: Request) {
   const { supabase, profile } = await getCurrentProfile();
   const forbidden = requireAdmin(profile?.role);
   if (forbidden) return forbidden;
 
+  const { searchParams } = new URL(request.url);
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  let dealsQuery = supabase.from("deals").select("product_id,stage,qualification,revenue,value,created_at");
+  if (from) dealsQuery = dealsQuery.gte("created_at", from);
+  if (to) dealsQuery = dealsQuery.lte("created_at", `${to}T23:59:59.999`);
+
+  let spendQuery = supabase.from("ad_spend").select("amount,period").is("product_id", null);
+  if (from) spendQuery = spendQuery.gte("period", from);
+  if (to) spendQuery = spendQuery.lte("period", to);
+
   const [{ data: deals, error: dealsError }, { data: spend, error: spendError }] = await Promise.all([
-    supabase.from("deals").select("product_id,stage,qualification,revenue,value"),
-    supabase.from("ad_spend").select("amount").is("product_id", null),
+    dealsQuery,
+    spendQuery,
   ]);
   if (dealsError) return dbError(dealsError);
   if (spendError) return dbError(spendError);
