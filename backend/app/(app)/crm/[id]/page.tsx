@@ -572,8 +572,8 @@ export default function DealDetailPage() {
                     {notes.map((n) => (
                       <div key={n.id} style={{ fontSize: 13, borderBottom: "1px solid var(--border)", paddingBottom: 8 }}>
                         {n.is_ai_generated && <span className="badge badge-ok" style={{ marginRight: 6 }}>IA</span>}
-                        {n.body}
-                        <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 2 }}>{fmtDateTime(n.created_at)}</div>
+                        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: n.is_ai_generated ? 6 : 0 }}>{n.body}</div>
+                        <div style={{ color: "var(--text-faint)", fontSize: 11, marginTop: 4 }}>{fmtDateTime(n.created_at)}</div>
                       </div>
                     ))}
                     {notes.length === 0 && <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Nenhum evento ainda.</p>}

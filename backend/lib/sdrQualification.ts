@@ -513,10 +513,10 @@ export function buildQualificationNote(input: SdrQualificationInput, sdrNome: st
 
   const alertasText =
     data.alertas.length > 0
-      ? "\n🚨 ALERTAS DE INCONSISTÊNCIA:\n" + data.alertas.map((a) => `• [${a.sev.toUpperCase()}] ${a.msg}`).join("\n")
+      ? "\n\n🚨 Alertas de inconsistência\n" + data.alertas.map((a) => `• [${a.sev.toUpperCase()}] ${a.msg}`).join("\n")
       : "";
 
-  const diagText = "\n" + data.diagnosticoSections.map((s) => `${s.label}\n${s.text}`).join("\n\n");
+  const diagText = data.diagnosticoSections.map((s) => `${s.label}\n${s.text}`).join("\n\n");
 
   const origemLabel =
     input.origem === "quente"
@@ -527,97 +527,57 @@ export function buildQualificationNote(input: SdrQualificationInput, sdrNome: st
 
   const margemMap: Record<number, string> = { 5: "<10%", 15: "10-20%", 25: "20-30%", 35: "30-40%", 50: ">40%" };
 
-  return `════════════════════════════════════════
-   GFB — DIAGNÓSTICO DE QUALIFICAÇÃO (SDR IA)
-   Gerado em: ${new Date().toLocaleString("pt-BR")}
-════════════════════════════════════════
+  return `GFB — Diagnóstico de Qualificação (SDR IA)
+Gerado em ${new Date().toLocaleString("pt-BR")} · SDR: ${sdrNome} · Origem: ${origemLabel}
 
-SDR: ${sdrNome}
-ORIGEM: ${origemLabel}
-
-────────────────────────────────────────
-DADOS COLETADOS
-────────────────────────────────────────
-Faturamento Mensal: ${FAT_LABEL[input.faturamento] || "Não informado"}
-Margem de Lucro: ${margemMap[input.margem] || "Não informado"}
+📋 Dados coletados
+Faturamento mensal: ${FAT_LABEL[input.faturamento] || "Não informado"}
+Margem de lucro: ${margemMap[input.margem] || "Não informado"}
 Endividamento: ${input.divida === "sim" ? "Sim" : "Não"}
-Fluxo de Caixa: ${input.fluxo === "neg" ? "Negativo" : input.fluxo === "pos" ? "Positivo" : "—"}
-Fundo de Reserva: ${input.fundo === "sim" ? "Tem" : input.fundo === "nao" ? "Não tem" : "—"}
+Fluxo de caixa: ${input.fluxo === "neg" ? "Negativo" : input.fluxo === "pos" ? "Positivo" : "—"}
+Fundo de reserva: ${input.fundo === "sim" ? "Tem" : input.fundo === "nao" ? "Não tem" : "—"}
 Decisor: ${input.decisor === "unico" ? "É o único decisor" : "Precisa consultar outros"}
 Casado: ${input.casado === "sim" ? "Sim" : input.casado === "nao" ? "Não" : "—"}
 
-────────────────────────────────────────
-ANÁLISE BANT
-────────────────────────────────────────
+📊 Análise BANT
 ${bantLines}
 
-────────────────────────────────────────
-NOTAS DO SDR
-────────────────────────────────────────
-NEGÓCIO:
-${input.negocio || "Não preenchido"}
+📝 Notas do SDR
+Negócio: ${input.negocio || "Não preenchido"}
+Maior desafio: ${input.desafio || "Não preenchido"}
+Dor oculta: ${input.dor || "Não preenchido"}
 
-MAIOR DESAFIO:
-${input.desafio || "Não preenchido"}
-
-DOR OCULTA:
-${input.dor || "Não preenchido"}
-
-🎯 ORIENTAÇÃO PARA O CLOSER:
+🎯 Orientação para o closer
 ${
   input.dor
     ? `Motivação real do lead: "${input.dor}". Use esse gatilho nos momentos de objeção. Explore: (1) como a situação atual impede esse objetivo; (2) o que muda quando resolver; (3) quanto está disposto a investir.`
     : "Dor oculta não mapeada — aprofundar no início da reunião antes de apresentar qualquer solução."
 }
 
-────────────────────────────────────────
-RESULTADO
-────────────────────────────────────────
-DECISÃO: ${data.tituloText}
-PRODUTO RECOMENDADO: ${data.produto}
-FORMA DE NEGOCIAÇÃO: ${data.negociacao}
-CHANCE DE COMPRA: ${data.score}%
-${alertasText}
+✅ Resultado
+Decisão: ${data.tituloText}
+Produto recomendado: ${data.produto}
+Forma de negociação: ${data.negociacao}
+Chance de compra: ${data.score}%${alertasText}
 
-────────────────────────────────────────
-LÓGICA DO DIAGNÓSTICO
-────────────────────────────────────────${diagText}
+🔍 Lógica do diagnóstico
+${diagText}
 
-────────────────────────────────────────
-AÇÕES PARA O CLOSER
-────────────────────────────────────────
-${data.actions.map((a, i) => `${i + 1}. ${a}`).join("\n")}
-
-════════════════════════════════════════
-   Gestão Fitness Brasil — GFB
-════════════════════════════════════════`;
+🎯 Ações para o closer
+${data.actions.map((a, i) => `${i + 1}. ${a}`).join("\n")}`;
 }
 
 /** Diagnóstico de encerramento (fluxo negativo sem reserva) — mesma regra
  * de corte usada pela ferramenta original antes de chegar ao BANT completo. */
 export function buildEncerrarNote(input: Pick<SdrQualificationInput, "negocio">, sdrNome: string): string {
-  return `════════════════════════════════════════
-   GFB — DIAGNÓSTICO DE QUALIFICAÇÃO (SDR IA)
-   Gerado em: ${new Date().toLocaleString("pt-BR")}
-════════════════════════════════════════
+  return `GFB — Diagnóstico de Qualificação (SDR IA)
+Gerado em ${new Date().toLocaleString("pt-BR")} · SDR: ${sdrNome}
 
-SDR: ${sdrNome}
+❌ Resultado: Entrevista encerrada
+Motivo: fluxo de caixa negativo sem fundo de reserva — situação financeira crítica. O programa não consegue ajudar o lead neste momento.
 
-────────────────────────────────────────
-RESULTADO: ❌ ENTREVISTA ENCERRADA
-────────────────────────────────────────
-Motivo: fluxo de caixa negativo sem fundo de reserva — situação financeira
-crítica. O programa não consegue ajudar o lead neste momento.
+Script sugerido: "Pelo que você me disse, você está em uma situação muito delicada na sua empresa. Na minha opinião, o mais importante agora é segurar o caixa. Vou te enviar 1 hora de consultoria 100% gratuita e um PDF de bônus — não é o momento de vender."
 
-Script sugerido: "Pelo que você me disse, você está em uma situação muito
-delicada na sua empresa. Na minha opinião, o mais importante agora é
-segurar o caixa. Vou te enviar 1 hora de consultoria 100% gratuita e um
-PDF de bônus — não é o momento de vender."
-
-NEGÓCIO:
-${input.negocio || "Não preenchido"}
-
-════════════════════════════════════════
-   Gestão Fitness Brasil — GFB
-════════════════════════════════════════`;
+📝 Negócio
+${input.negocio || "Não preenchido"}`;
 }
