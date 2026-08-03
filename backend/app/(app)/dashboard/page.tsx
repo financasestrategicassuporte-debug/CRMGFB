@@ -66,24 +66,51 @@ export default function DashboardPage() {
   const [dateFrom, setDateFrom] = useState(REAL_DATA_START);
   const [dateTo, setDateTo] = useState("");
   const [showDateMenu, setShowDateMenu] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setRole(d.profile?.role ?? "admin"));
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (dateFrom) params.set("from", dateFrom);
-    if (dateTo) params.set("to", dateTo);
-    fetch(`/api/funnels/general?${params}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.funnel) setFunnel(d.funnel);
-        if (d.economics) setEconomics(d.economics);
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+
+    function loadFunnel(showSpinner: boolean) {
+      if (showSpinner) setLoading(true);
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
+      fetch(`/api/funnels/general?${params}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (cancelled) return;
+          if (d.funnel) setFunnel(d.funnel);
+          if (d.economics) setEconomics(d.economics);
+          setLastUpdated(new Date());
+        })
+        .finally(() => {
+          if (!cancelled && showSpinner) setLoading(false);
+        });
+    }
+
+    loadFunnel(true);
+    // Módulo ao vivo: reconsulta o funil a cada 20s sem piscar o
+    // "Carregando…" — os cards vão puxando os números reais conforme
+    // leads/negociações entram, sem precisar dar F5.
+    const interval = setInterval(() => loadFunnel(false), 20000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (lastUpdated) setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [lastUpdated]);
 
   const ticketMedio = funnel.vendas > 0 ? funnel.receita / funnel.vendas : 0;
 
@@ -128,7 +155,23 @@ export default function DashboardPage() {
       />
 
       <div style={{ padding: 32 }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--accent-darker)",
+              background: "var(--status-ok-bg)",
+              borderRadius: 999,
+              padding: "6px 12px",
+            }}
+          >
+            <span className="urgent-alert" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} />
+            Ao vivo · atualizado {lastUpdated ? (secondsAgo <= 1 ? "agora" : `há ${secondsAgo}s`) : "…"}
+          </span>
           <div style={{ position: "relative" }}>
             {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
             <button
