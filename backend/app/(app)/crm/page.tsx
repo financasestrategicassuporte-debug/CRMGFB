@@ -131,6 +131,7 @@ export default function CrmPage() {
   const [pageSize, setPageSize] = useState(10);
   const [bulkMenu, setBulkMenu] = useState<"status" | "mover" | "transferir" | "valor" | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [bulkValue, setBulkValue] = useState("");
   const [showCustomPageSize, setShowCustomPageSize] = useState(false);
   const [customPageSizeInput, setCustomPageSizeInput] = useState("");
@@ -270,9 +271,24 @@ export default function CrmPage() {
   async function bulkDelete() {
     if (!confirm(`Excluir ${selectedIds.size} negociação(ões)? Essa ação não pode ser desfeita.`)) return;
     setBulkBusy(true);
-    await Promise.all([...selectedIds].map((id) => fetch(`/api/deals/${id}`, { method: "DELETE" })));
+    setBulkMessage(null);
+    const ids = [...selectedIds];
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        const res = await fetch(`/api/deals/${id}`, { method: "DELETE" });
+        if (res.ok) return { id, ok: true as const };
+        const body = await res.json().catch(() => ({}));
+        return { id, ok: false as const, error: body.error ?? `Erro ${res.status}` };
+      })
+    );
+    const failed = results.filter((r) => !r.ok);
     setBulkBusy(false);
-    setSelectedIds(new Set());
+    setSelectedIds(new Set(failed.map((f) => f.id)));
+    setBulkMessage(
+      failed.length === 0
+        ? null
+        : `${results.length - failed.length} excluída(s), ${failed.length} falharam: ${failed[0].error}`
+    );
     loadDeals();
   }
 
@@ -639,6 +655,7 @@ export default function CrmPage() {
               <button onClick={() => setSelectedIds(new Set())} style={{ color: "var(--accent)", background: "none", border: "none", fontSize: 12.5, fontWeight: 700 }}>
                 Limpar seleção
               </button>
+              {bulkMessage && <span style={{ color: "#fca5a5", fontSize: 12, fontWeight: 600 }}>{bulkMessage}</span>}
               <div style={{ flex: 1 }} />
 
               <div style={{ position: "relative", zIndex: 26 }}>
