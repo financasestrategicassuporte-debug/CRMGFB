@@ -57,6 +57,8 @@ const STATUS_OPTIONS: { value: string; label: string; icon: string }[] = [
   { value: "nao_pausado", label: "Não pausado", icon: "play_circle" },
 ];
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200, 500, 1000];
+
 function fmtBRL(v: number | null) {
   if (!v) return "R$ 0,00";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -130,6 +132,8 @@ export default function CrmPage() {
   const [bulkMenu, setBulkMenu] = useState<"status" | "mover" | "transferir" | "valor" | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkValue, setBulkValue] = useState("");
+  const [showCustomPageSize, setShowCustomPageSize] = useState(false);
+  const [customPageSizeInput, setCustomPageSizeInput] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -800,17 +804,53 @@ export default function CrmPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 Exibindo {pagedDeals.length} de {visibleDeals.length} negociações
                 <select
-                  value={pageSize}
+                  value={PAGE_SIZE_OPTIONS.includes(pageSize) ? pageSize : "custom"}
                   onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setPage(1);
+                    if (e.target.value === "custom") {
+                      setCustomPageSizeInput(String(pageSize));
+                      setShowCustomPageSize(true);
+                    } else {
+                      setShowCustomPageSize(false);
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }
                   }}
                   style={{ ...selectStyle, padding: "4px 8px" }}
                 >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                  <option value="custom">Personalizado…</option>
                 </select>
+                {showCustomPageSize && (
+                  <input
+                    type="number"
+                    min={1}
+                    autoFocus
+                    value={customPageSizeInput}
+                    placeholder="Ex: 750"
+                    onChange={(e) => setCustomPageSizeInput(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(customPageSizeInput, 10);
+                      if (n > 0) {
+                        setPageSize(n);
+                        setPage(1);
+                      }
+                      setShowCustomPageSize(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const n = parseInt(customPageSizeInput, 10);
+                        if (n > 0) {
+                          setPageSize(n);
+                          setPage(1);
+                        }
+                        setShowCustomPageSize(false);
+                      }
+                    }}
+                    style={{ width: 72, border: "1px solid var(--border)", borderRadius: 8, padding: "3px 8px", fontSize: 12.5 }}
+                  />
+                )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
