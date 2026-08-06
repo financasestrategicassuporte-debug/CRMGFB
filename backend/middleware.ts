@@ -58,5 +58,6 @@ export const config = {
     "/comissoes/:path*",
     "/chats/:path*",
     "/rfv/:path*",
+    "/execucao/:path*",
   ],
 };

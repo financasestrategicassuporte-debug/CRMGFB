@@ -203,6 +203,57 @@ export type Database = {
           },
         ]
       }
+      client_week_attachments: {
+        Row: {
+          client_week_progress_id: string
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          playbook_week_field_id: string | null
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_week_progress_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          playbook_week_field_id?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_week_progress_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          playbook_week_field_id?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_week_attachments_client_week_progress_id_fkey"
+            columns: ["client_week_progress_id"]
+            isOneToOne: false
+            referencedRelation: "client_week_progress"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_week_attachments_playbook_week_field_id_fkey"
+            columns: ["playbook_week_field_id"]
+            isOneToOne: false
+            referencedRelation: "playbook_week_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_week_field_responses: {
         Row: {
           client_week_progress_id: string
@@ -248,7 +299,12 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           created_at: string
+          email_body: string | null
+          email_sent_at: string | null
+          email_status: string
+          email_subject: string | null
           id: string
+          scheduled_send_at: string | null
           week_number: number
         }
         Insert: {
@@ -256,7 +312,12 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          email_body?: string | null
+          email_sent_at?: string | null
+          email_status?: string
+          email_subject?: string | null
           id?: string
+          scheduled_send_at?: string | null
           week_number: number
         }
         Update: {
@@ -264,7 +325,12 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          email_body?: string | null
+          email_sent_at?: string | null
+          email_status?: string
+          email_subject?: string | null
           id?: string
+          scheduled_send_at?: string | null
           week_number?: number
         }
         Relationships: [
@@ -286,6 +352,9 @@ export type Database = {
           created_at: string
           current_week: number
           data_primeira_compra: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string | null
           financeiro_status: string
           id: string
           ltv: number | null
@@ -296,8 +365,10 @@ export type Database = {
           ticket_medio: number | null
           unidade: string | null
           updated_at: string
+          user_id: string | null
           valor: number | null
           vencimento: string | null
+          whatsapp: string | null
         }
         Insert: {
           atividade_status?: string
@@ -307,6 +378,9 @@ export type Database = {
           created_at?: string
           current_week?: number
           data_primeira_compra?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
           financeiro_status?: string
           id?: string
           ltv?: number | null
@@ -317,8 +391,10 @@ export type Database = {
           ticket_medio?: number | null
           unidade?: string | null
           updated_at?: string
+          user_id?: string | null
           valor?: number | null
           vencimento?: string | null
+          whatsapp?: string | null
         }
         Update: {
           atividade_status?: string
@@ -328,6 +404,9 @@ export type Database = {
           created_at?: string
           current_week?: number
           data_primeira_compra?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
           financeiro_status?: string
           id?: string
           ltv?: number | null
@@ -338,8 +417,10 @@ export type Database = {
           ticket_medio?: number | null
           unidade?: string | null
           updated_at?: string
+          user_id?: string | null
           valor?: number | null
           vencimento?: string | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
@@ -512,6 +593,102 @@ export type Database = {
           },
         ]
       }
+      deal_automation_runs: {
+        Row: {
+          deal_id: string
+          detail: string | null
+          executed_at: string
+          id: string
+          rule_id: string
+          stage_changed_at: string
+          status: string
+        }
+        Insert: {
+          deal_id: string
+          detail?: string | null
+          executed_at?: string
+          id?: string
+          rule_id: string
+          stage_changed_at: string
+          status: string
+        }
+        Update: {
+          deal_id?: string
+          detail?: string | null
+          executed_at?: string
+          id?: string
+          rule_id?: string
+          stage_changed_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_automation_runs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_automation_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "deal_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_automations: {
+        Row: {
+          action_type: string
+          active: boolean
+          created_at: string
+          delay_days: number
+          id: string
+          run_count: number
+          run_time: string | null
+          skip_weekends: boolean
+          task_type: string | null
+          template_body: string | null
+          template_subject: string | null
+          title: string
+          trigger_stage: number
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          active?: boolean
+          created_at?: string
+          delay_days?: number
+          id?: string
+          run_count?: number
+          run_time?: string | null
+          skip_weekends?: boolean
+          task_type?: string | null
+          template_body?: string | null
+          template_subject?: string | null
+          title: string
+          trigger_stage: number
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          active?: boolean
+          created_at?: string
+          delay_days?: number
+          id?: string
+          run_count?: number
+          run_time?: string | null
+          skip_weekends?: boolean
+          task_type?: string | null
+          template_body?: string | null
+          template_subject?: string | null
+          title?: string
+          trigger_stage?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_notes: {
         Row: {
           author_id: string | null
@@ -605,102 +782,6 @@ export type Database = {
           },
         ]
       }
-      deal_automations: {
-        Row: {
-          id: string
-          title: string
-          trigger_stage: number
-          action_type: string
-          task_type: string | null
-          run_time: string | null
-          skip_weekends: boolean
-          delay_days: number
-          template_subject: string | null
-          template_body: string | null
-          active: boolean
-          run_count: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          trigger_stage: number
-          action_type: string
-          task_type?: string | null
-          run_time?: string | null
-          skip_weekends?: boolean
-          delay_days?: number
-          template_subject?: string | null
-          template_body?: string | null
-          active?: boolean
-          run_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          title?: string
-          trigger_stage?: number
-          action_type?: string
-          task_type?: string | null
-          run_time?: string | null
-          skip_weekends?: boolean
-          delay_days?: number
-          template_subject?: string | null
-          template_body?: string | null
-          active?: boolean
-          run_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      deal_automation_runs: {
-        Row: {
-          id: string
-          rule_id: string
-          deal_id: string
-          stage_changed_at: string
-          status: string
-          detail: string | null
-          executed_at: string
-        }
-        Insert: {
-          id?: string
-          rule_id: string
-          deal_id: string
-          stage_changed_at: string
-          status: string
-          detail?: string | null
-          executed_at?: string
-        }
-        Update: {
-          id?: string
-          rule_id?: string
-          deal_id?: string
-          stage_changed_at?: string
-          status?: string
-          detail?: string | null
-          executed_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "deal_automation_runs_rule_id_fkey"
-            columns: ["rule_id"]
-            isOneToOne: false
-            referencedRelation: "deal_automations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "deal_automation_runs_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       deals: {
         Row: {
           ad: string | null
@@ -710,6 +791,7 @@ export type Database = {
           company_name: string | null
           created_at: string
           email: string | null
+          first_contacted_at: string | null
           forecast: string | null
           id: string
           lost: boolean
@@ -747,6 +829,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           email?: string | null
+          first_contacted_at?: string | null
           forecast?: string | null
           id?: string
           lost?: boolean
@@ -784,6 +867,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           email?: string | null
+          first_contacted_at?: string | null
           forecast?: string | null
           id?: string
           lost?: boolean
@@ -829,6 +913,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          id: string
+          key: string
+          subject: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body_html: string
+          id?: string
+          key: string
+          subject: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body_html?: string
+          id?: string
+          key?: string
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       group_migrations: {
         Row: {
@@ -1080,29 +1191,35 @@ export type Database = {
       }
       playbook_weeks: {
         Row: {
+          broadcast_sent_at: string | null
           channels: string[]
           created_at: string
           detail: string | null
           id: string
           plan_id: string
+          send_at: string | null
           title: string
           week_number: number
         }
         Insert: {
+          broadcast_sent_at?: string | null
           channels?: string[]
           created_at?: string
           detail?: string | null
           id?: string
           plan_id: string
+          send_at?: string | null
           title: string
           week_number: number
         }
         Update: {
+          broadcast_sent_at?: string | null
           channels?: string[]
           created_at?: string
           detail?: string | null
           id?: string
           plan_id?: string
+          send_at?: string | null
           title?: string
           week_number?: number
         }
@@ -1250,6 +1367,69 @@ export type Database = {
           },
         ]
       }
+      system_audit_log: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          client_id: string | null
+          client_week_progress_id: string | null
+          created_at: string
+          event_type: string
+          file_name: string | null
+          id: string
+          metadata: Json
+          recipient_email: string | null
+          status: string | null
+          storage_path: string | null
+          subject: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          client_id?: string | null
+          client_week_progress_id?: string | null
+          created_at?: string
+          event_type: string
+          file_name?: string | null
+          id?: string
+          metadata?: Json
+          recipient_email?: string | null
+          status?: string | null
+          storage_path?: string | null
+          subject?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          client_id?: string | null
+          client_week_progress_id?: string | null
+          created_at?: string
+          event_type?: string
+          file_name?: string | null
+          id?: string
+          metadata?: Json
+          recipient_email?: string | null
+          status?: string | null
+          storage_path?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_audit_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_audit_log_client_week_progress_id_fkey"
+            columns: ["client_week_progress_id"]
+            isOneToOne: false
+            referencedRelation: "client_week_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1257,6 +1437,10 @@ export type Database = {
     Functions: {
       is_admin: { Args: never; Returns: boolean }
       is_team_member: { Args: never; Returns: boolean }
+      submit_week_form: {
+        Args: { p_client_id: string; p_week_number: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

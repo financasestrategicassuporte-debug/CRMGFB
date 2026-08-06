@@ -17,6 +17,7 @@ const NAV_GROUPS_ADMIN = [
       { href: "/crm", icon: "contacts", label: "CRM · Todos" },
       { href: "/leads", icon: "inbox", label: "Leads Recebidos" },
       { href: "/automacoes", icon: "bolt", label: "Automações" },
+      { href: "/execucao", icon: "speed", label: "Relatório de Execução" },
     ],
   },
   {
