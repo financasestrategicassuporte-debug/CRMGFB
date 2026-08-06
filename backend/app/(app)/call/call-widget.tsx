@@ -30,11 +30,16 @@ export function CallWidget() {
   const [scriptPhase, setScriptPhase] = useState<"pergunta1" | "pergunta2" | "agendar" | null>(null);
   const [agendarDateTime, setAgendarDateTime] = useState("");
   const [savingAgendamento, setSavingAgendamento] = useState(false);
+  // Some pro canto (sem fundo escurecido, sem travar a tela de trás)
+  // quando o SDR precisa continuar numa outra tela — hoje só acontece
+  // ao abrir o Qualificar SDR IA enquanto a ligação ainda está rolando.
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     setScriptPhase(null);
     setAgendarDateTime("");
     setSavingAgendamento(false);
+    setMinimized(false);
   }, [call.deal?.id]);
 
   if (!call.open || !call.deal) return null;
@@ -68,13 +73,15 @@ export function CallWidget() {
 
   // "Sim" (tem interesse) vai direto pro Qualificar SDR IA — a data de
   // retorno é só pra quem pediu "Me liga depois", não pra quem já quer
-  // agendar a consultoria de verdade. Fecha o widget na hora (em vez de
-  // deixar o card de wrap-up flutuando por cima do wizard) — a análise
-  // de IA e a anotação continuam salvando em background.
+  // agendar a consultoria de verdade. A ligação NÃO encerra aqui: o SDR
+  // continua ao telefone preenchendo o qualificador com o que o lead
+  // responde — o widget só sai do centro da tela e vai pro canto, sem
+  // travar o wizard, mas seguindo a transcrever normalmente.
   function handleSimQualificar() {
     const dealId = deal.id;
-    call.endCall("Agendou");
-    call.hideWidget();
+    call.setResult("Agendou");
+    setScriptPhase(null);
+    setMinimized(true);
     router.push(`/crm/${dealId}?qualify=1`);
   }
 
@@ -94,18 +101,20 @@ export function CallWidget() {
     setSavingAgendamento(false);
   }
 
-  const containerStyle: React.CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(13,42,32,0.45)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 9999,
-  };
+  const containerStyle: React.CSSProperties = minimized
+    ? { position: "fixed", right: 20, bottom: 20, zIndex: 9999 }
+    : {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(13,42,32,0.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+      };
 
   const cardStyle: React.CSSProperties = {
-    width: 380,
+    width: minimized ? 320 : 380,
     background: "#fff",
     border: "1.5px solid var(--accent)",
     borderRadius: 14,
@@ -136,6 +145,15 @@ export function CallWidget() {
               <span style={{ background: "var(--accent)", color: "#06140d", fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>
                 {queuePosition}
               </span>
+            )}
+            {minimized && (
+              <button
+                onClick={() => setMinimized(false)}
+                title="Expandir"
+                style={{ border: "none", background: "none", color: "#fff", display: "flex", alignItems: "center", cursor: "pointer" }}
+              >
+                <span className="msym" style={{ fontSize: 16 }}>open_in_full</span>
+              </button>
             )}
             <button onClick={call.closeWidget} style={{ border: "none", background: "none", color: "#fff", fontSize: 15, cursor: "pointer", lineHeight: 1 }}>
               ✕
