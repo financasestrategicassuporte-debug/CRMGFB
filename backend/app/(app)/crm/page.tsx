@@ -77,6 +77,32 @@ function fmtDateShort(isoDate: string) {
   return `${d}/${m}/${y.slice(2)}`;
 }
 
+function toISODate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Atalhos do filtro "Período": além do intervalo manual (personalizado
+ * via os campos De/Até), oferece os recortes mais usados no dia a dia. */
+function datePresets(): { label: string; from: string; to: string }[] {
+  const today = new Date();
+  const daysAgo = (n: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - n);
+    return d;
+  };
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  return [
+    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
+    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
+    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
+    { label: "14 dias", from: toISODate(daysAgo(13)), to: toISODate(today) },
+    { label: "30 dias", from: toISODate(daysAgo(29)), to: toISODate(today) },
+    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
+  ];
+}
+
 /** Tarefa aberta mais próxima do vencimento — prioriza a lista real de
  * tarefas (deal_tasks); se o deal ainda não tem nenhuma, cai pro campo
  * legado (task_desc/task_type/task_date) que os dados de exemplo usam. */
@@ -608,6 +634,33 @@ export default function CrmPage() {
                 >
                   <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
                     Filtrar por data de criação
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                    {datePresets().map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => {
+                          setDateFrom(p.from);
+                          setDateTo(p.to);
+                          setShowDateMenu(false);
+                        }}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 999,
+                          background: dateFrom === p.from && dateTo === p.to ? "var(--status-ok-bg)" : "#fff",
+                          color: dateFrom === p.from && dateTo === p.to ? "var(--accent-darker)" : "var(--text)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "4px 9px",
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Personalizado
                   </div>
                   <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
                   <input
