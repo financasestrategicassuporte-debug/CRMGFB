@@ -13,7 +13,33 @@ type Member = {
   active: boolean;
 };
 
+type BreakLog = {
+  id: string;
+  tipo: "banheiro" | "almoco" | "outro";
+  started_at: string;
+  ended_at: string | null;
+  profile: { id: string; name: string } | null;
+};
+
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", sdr: "SDR", closer: "Closer" };
+const BREAK_TIPO_LABEL: Record<string, string> = { banheiro: "Banheiro", almoco: "Almoço", outro: "Outro" };
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmtHora(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtDuracao(startedAt: string, endedAt: string | null) {
+  if (!endedAt) return "Em andamento";
+  const minutos = Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000);
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ""}` : `${m}min`;
+}
 
 export default function TimePage() {
   const [role, setRole] = useState("admin");
@@ -22,6 +48,9 @@ export default function TimePage() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "sdr" as Member["role"], phone: "" });
+  const [breaks, setBreaks] = useState<BreakLog[]>([]);
+  const [breaksLoading, setBreaksLoading] = useState(true);
+  const [breaksDate, setBreaksDate] = useState(todayISO());
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -40,6 +69,14 @@ export default function TimePage() {
   useEffect(() => {
     loadTeam();
   }, []);
+
+  useEffect(() => {
+    setBreaksLoading(true);
+    fetch(`/api/breaks?from=${breaksDate}&to=${breaksDate}`)
+      .then((r) => r.json())
+      .then((d) => setBreaks(d.breaks ?? []))
+      .finally(() => setBreaksLoading(false));
+  }, [breaksDate]);
 
   async function createMember(e: React.FormEvent) {
     e.preventDefault();
@@ -131,6 +168,57 @@ export default function TimePage() {
           </table>
         </div>
       )}
+
+      <section className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px 0" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+            <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>schedule</span>
+            Folha de ponto · pausas registradas
+          </h2>
+          <input
+            type="date"
+            value={breaksDate}
+            onChange={(e) => setBreaksDate(e.target.value)}
+            style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+          />
+        </div>
+        <p style={{ color: "var(--text-faint)", fontSize: 12.5, padding: "0 16px", marginTop: 6 }}>
+          Registro voluntário — o colaborador clica quando sai pro banheiro/almoço, sem nenhum bloqueio associado.
+        </p>
+        {breaksLoading ? (
+          <p style={{ padding: 16 }}>Carregando…</p>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}>
+            <thead>
+              <tr style={{ background: "var(--surface-muted)", textAlign: "left" }}>
+                <th style={thStyle}>Colaborador</th>
+                <th style={thStyle}>Tipo</th>
+                <th style={thStyle}>Início</th>
+                <th style={thStyle}>Fim</th>
+                <th style={thStyle}>Duração</th>
+              </tr>
+            </thead>
+            <tbody>
+              {breaks.map((b) => (
+                <tr key={b.id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={tdStyle}>{b.profile?.name ?? "—"}</td>
+                  <td style={tdStyle}>{BREAK_TIPO_LABEL[b.tipo]}</td>
+                  <td style={tdStyle}>{fmtHora(b.started_at)}</td>
+                  <td style={tdStyle}>{fmtHora(b.ended_at)}</td>
+                  <td style={{ ...tdStyle, fontWeight: b.ended_at ? undefined : 700, color: b.ended_at ? undefined : "#b45309" }}>
+                    {fmtDuracao(b.started_at, b.ended_at)}
+                  </td>
+                </tr>
+              ))}
+              {breaks.length === 0 && (
+                <tr>
+                  <td style={tdStyle} colSpan={5}>Nenhuma pausa registrada nesse dia.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       {showForm && (
         <div style={overlayStyle}>

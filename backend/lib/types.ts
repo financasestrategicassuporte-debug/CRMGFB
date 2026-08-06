@@ -203,6 +203,41 @@ export type Database = {
           },
         ]
       }
+      break_logs: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          profile_id: string
+          started_at: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          profile_id: string
+          started_at?: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          profile_id?: string
+          started_at?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "break_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_week_attachments: {
         Row: {
           client_week_progress_id: string
