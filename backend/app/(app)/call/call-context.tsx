@@ -32,11 +32,12 @@ type CallState = {
 };
 
 type CallContextValue = CallState & {
+  sdrName: string;
   startCall: (deal: CallableDeal) => void;
   startMassQueue: (deals: CallableDeal[]) => void;
   dial: () => void;
   setResult: (result: CallResult) => void;
-  endCall: () => void;
+  endCall: (resultOverride?: CallResult) => void;
   skipQueueItem: () => void;
   cancelAutoAdvance: () => void;
   stopMassQueue: () => void;
@@ -93,6 +94,17 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  // Nome do SDR logado, usado no script de ligação — fica fora de
+  // `CallState` de propósito, porque `startCall`/`startMassQueue`/
+  // `advanceQueue` resetam o resto do estado pra `initialState` a cada
+  // ligação, e o nome do SDR não pode ser perdido nesse reset.
+  const [sdrName, setSdrName] = useState("");
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setSdrName(d.profile?.name ?? ""));
+  }, []);
 
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -208,7 +220,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const endCall = useCallback(() => {
+  const endCall = useCallback((resultOverride?: CallResult) => {
     stopTimer();
     stopRecognition();
 
@@ -217,7 +229,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     if (!deal) return;
     const duration = s.elapsedSeconds;
     const transcript = s.transcript;
-    const result = s.result;
+    const result = resultOverride ?? s.result;
     const massMode = s.massMode;
 
     setState((cur) => ({ ...cur, phase: "wrap-up", analyzing: true }));
@@ -303,6 +315,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   const value: CallContextValue = {
     ...state,
+    sdrName,
     startCall,
     startMassQueue,
     dial,

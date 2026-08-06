@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Banner } from "../../banner";
 import { QualifyWizard } from "./qualify-wizard";
 
@@ -79,6 +79,7 @@ const LOST_REASONS = [
   "Fechou com a concorrência",
   "Não consegui mais contato, pois sumiu",
   "Lead duplicado",
+  "Não tem interesse",
 ];
 
 const FIRST_SALE_PHRASE = "Parabéns pela venda, é só o começo!";
@@ -152,6 +153,7 @@ const TASK_TYPE_LABEL: Record<string, string> = {
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [role, setRole] = useState("admin");
   const [profileName, setProfileName] = useState("");
   const [deal, setDeal] = useState<Deal | null>(null);
@@ -199,6 +201,23 @@ export default function DealDetailPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // O widget de Ligação Massiva manda o SDR direto pra cá depois do
+  // script ("Sim"/"Me liga depois" → ?qualify=1, "Não" → ?lost=1&reason=…)
+  // — abre a tela certa sozinho em vez de deixar o SDR procurar o botão.
+  useEffect(() => {
+    if (loading || !deal) return;
+    if (searchParams.get("qualify") === "1") {
+      setShowQualify(true);
+      router.replace(`/crm/${id}`);
+    } else if (searchParams.get("lost") === "1") {
+      const reason = searchParams.get("reason");
+      if (reason && LOST_REASONS.includes(reason)) setLostReason(reason);
+      setShowLostForm(true);
+      router.replace(`/crm/${id}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, deal, searchParams]);
 
   async function moveToStage(stage: number) {
     await fetch(`/api/deals/${id}`, {
