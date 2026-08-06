@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   computeQualification,
   buildQualificationNote,
@@ -13,6 +13,7 @@ type Props = {
   dealId: string;
   personName: string;
   sdrNome: string;
+  pipeline: "quente" | "frio";
   onClose: () => void;
   onSaved: () => void;
 };
@@ -56,7 +57,7 @@ const MARGEM_ESPERADA_OPTIONS = [
 ];
 
 function getSteps(a: Answers): string[] {
-  const steps = ["saudacao", "objetivo", "autoridade", "origem", "negocio", "faturamento", "margem", "divida"];
+  const steps = ["saudacao", "objetivo", "autoridade", "negocio", "faturamento", "margem", "divida"];
   if (a.divida === "sim") {
     steps.push("fluxo");
     if (a.fluxo === "neg") {
@@ -77,8 +78,6 @@ function getSteps(a: Answers): string[] {
 
 function isComplete(key: string, a: Answers): boolean {
   switch (key) {
-    case "origem":
-      return !!a.origem;
     case "negocio":
       return !!a.negocio?.trim();
     case "faturamento":
@@ -94,7 +93,7 @@ function isComplete(key: string, a: Answers): boolean {
     case "desafio":
       return !!a.desafio?.trim();
     case "ancoragem":
-      return true; // opcional
+      return !!a.fatEsperado && !!a.margemEsperada;
     case "dor":
       return !!a.dor?.trim();
     case "decisor":
@@ -157,8 +156,11 @@ function ScriptBlock({ label, children }: { label?: string; children: React.Reac
   );
 }
 
-export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }: Props) {
-  const [answers, setAnswers] = useState<Answers>({});
+export function QualifyWizard({ dealId, personName, sdrNome, pipeline, onClose, onSaved }: Props) {
+  // A origem do lead já é conhecida pelo funil da negociação (Quente/Frio),
+  // então não perguntamos de novo aqui — só usamos o mesmo valor que a
+  // fórmula de qualificação (computeQualification) sempre esperou.
+  const [answers, setAnswers] = useState<Answers>({ origem: pipeline === "quente" ? "quente" : "frio_ate40k" });
   const [conheceGfb, setConheceGfb] = useState<"sim" | "nao" | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -190,6 +192,7 @@ export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }:
     if (showResult) {
       setShowResult(false);
       setEncerrado(false);
+      setSaved(false);
       return;
     }
     setStepIndex((i) => Math.max(0, i - 1));
@@ -230,6 +233,17 @@ export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }:
     onSaved();
   }
 
+  // Salva o diagnóstico sozinho assim que a entrevista termina — sem
+  // esperar clique em "Salvar", pra `deal.qualification` já refletir no
+  // indicador "Leads qualificados" do dashboard (computeFunnel) mesmo se
+  // o SDR só fechar o wizard depois de ler o resultado.
+  useEffect(() => {
+    if (showResult && !saving && !saved) {
+      save();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResult]);
+
   const overlayStyle: React.CSSProperties = {
     position: "fixed",
     inset: 0,
@@ -239,23 +253,6 @@ export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }:
     justifyContent: "center",
     zIndex: 60,
   };
-
-  if (saved) {
-    return (
-      <div style={overlayStyle}>
-        <div className="card" style={{ ...cardStyle, textAlign: "center", padding: 32 }}>
-          <span className="msym" style={{ fontSize: 40, color: "var(--accent)" }}>check_circle</span>
-          <h2 style={{ fontSize: 16 }}>Diagnóstico salvo nas anotações</h2>
-          <p style={{ color: "var(--text-faint)", fontSize: 13, marginBottom: 20 }}>
-            O resultado completo da qualificação foi registrado no histórico de {personName}.
-          </p>
-          <button className="btn-primary" style={{ width: "100%" }} onClick={onClose}>
-            Fechar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (showResult) {
     return (
@@ -342,12 +339,16 @@ export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }:
             )
           )}
 
-          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, fontSize: 12, fontWeight: 700, color: saved ? "var(--accent-darker)" : "var(--text-faint)" }}>
+            <span className="msym" style={{ fontSize: 15 }}>{saved ? "check_circle" : "sync"}</span>
+            {saved ? "Salvo automaticamente nas anotações" : "Salvando automaticamente nas anotações…"}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button onClick={back} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
               ← Voltar
             </button>
-            <button onClick={save} disabled={saving} className="btn-primary" style={{ flex: 1 }}>
-              {saving ? "Salvando…" : "💾 Salvar nas anotações"}
+            <button onClick={onClose} className="btn-primary" style={{ flex: 1 }}>
+              Concluir
             </button>
           </div>
         </div>
@@ -401,18 +402,6 @@ export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }:
             {conheceGfb === "sim" && (
               <ScriptBlock label="SE JÁ CONHECE — FALE ISSO">Que ótimo! Então você já sabe um pouco do que a gente faz. Vamos em frente com a entrevista!</ScriptBlock>
             )}
-          </>
-        )}
-
-        {currentKey === "origem" && (
-          <>
-            <label style={labelStyle}>Como o lead chegou até vocês?</label>
-            <select value={answers.origem ?? ""} onChange={(e) => update({ origem: e.target.value as Answers["origem"] })} style={inputStyle}>
-              <option value="">Selecione…</option>
-              <option value="quente">Funil Webinário Quente — Preencheram Aplicação</option>
-              <option value="frio_ate40k">Funil Webinário Frio — Até 40K</option>
-              <option value="frio_mais40k">Funil Webinário Frio — +40K</option>
-            </select>
           </>
         )}
 
@@ -508,7 +497,7 @@ export function QualifyWizard({ dealId, personName, sdrNome, onClose, onSaved }:
           <>
             <label style={labelStyle}>Passo 1.4 — Qualificação · ⏱ Gera o número que será usado na venda</label>
             <ScriptBlock>Se você eliminasse esse desafio, a quanto você acha que conseguiria aumentar de margem e para qual faturamento?</ScriptBlock>
-            <p style={hintStyle}>💡 Esse número define a meta e você poderá usar para ancorar o quão barata sairá a mentoria frente ao resultado. (Opcional)</p>
+            <p style={hintStyle}>💡 Esse número define a meta e você poderá usar para ancorar o quão barata sairá a mentoria frente ao resultado.</p>
             <select value={answers.fatEsperado ?? ""} onChange={(e) => update({ fatEsperado: Number(e.target.value) })} style={inputStyle}>
               <option value="">Faturamento esperado…</option>
               {FAT_ESPERADO_OPTIONS.map((o) => (

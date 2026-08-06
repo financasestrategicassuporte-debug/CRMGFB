@@ -611,6 +611,7 @@ export default function DealDetailPage() {
           dealId={id}
           personName={deal.person_name}
           sdrNome={deal.assignee?.name ?? profileName}
+          pipeline={deal.pipeline}
           onClose={() => setShowQualify(false)}
           onSaved={load}
         />
