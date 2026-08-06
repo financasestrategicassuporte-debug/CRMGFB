@@ -63,6 +63,7 @@ export default function DashboardPage() {
     lucro: 0,
     conversao: 0,
   });
+  const [pipeline, setPipeline] = useState<"geral" | "quente" | "frio">("geral");
   const [dateFrom, setDateFrom] = useState(REAL_DATA_START);
   const [dateTo, setDateTo] = useState("");
   const [showDateMenu, setShowDateMenu] = useState(false);
@@ -81,6 +82,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams();
       if (dateFrom) params.set("from", dateFrom);
       if (dateTo) params.set("to", dateTo);
+      if (pipeline !== "geral") params.set("pipeline", pipeline);
       fetch(`/api/funnels/general?${params}`)
         .then((r) => r.json())
         .then((d) => {
@@ -103,7 +105,7 @@ export default function DashboardPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, pipeline]);
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -156,22 +158,54 @@ export default function DashboardPage() {
 
       <div style={{ padding: 32 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 700,
-              color: "var(--accent-darker)",
-              background: "var(--status-ok-bg)",
-              borderRadius: 999,
-              padding: "6px 12px",
-            }}
-          >
-            <span className="urgent-alert" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} />
-            Ao vivo · atualizado {lastUpdated ? (secondsAgo <= 1 ? "agora" : `há ${secondsAgo}s`) : "…"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--accent-darker)",
+                background: "var(--status-ok-bg)",
+                borderRadius: 999,
+                padding: "6px 12px",
+              }}
+            >
+              <span className="urgent-alert" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} />
+              Ao vivo · atualizado {lastUpdated ? (secondsAgo <= 1 ? "agora" : `há ${secondsAgo}s`) : "…"}
+            </span>
+
+            <div style={{ display: "flex", gap: 6 }}>
+              {(
+                [
+                  { value: "geral" as const, label: "Geral", icon: "hub", color: "var(--accent-darker)" },
+                  { value: "quente" as const, label: "Funil Quente", icon: "local_fire_department", color: "#f97316" },
+                  { value: "frio" as const, label: "Funil Frio", icon: "ac_unit", color: "#38bdf8" },
+                ]
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPipeline(opt.value)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "7px 12px",
+                    borderRadius: 10,
+                    border: `1px solid ${pipeline === opt.value ? "var(--accent)" : "var(--border)"}`,
+                    background: "#fff",
+                    color: "var(--text)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  <span className="msym" style={{ fontSize: 15, color: opt.color }}>{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ position: "relative" }}>
             {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
             <button

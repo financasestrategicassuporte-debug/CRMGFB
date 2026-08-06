@@ -58,8 +58,6 @@ const STATUS_OPTIONS: { value: string; label: string; icon: string }[] = [
   { value: "andamento", label: "Em andamento", icon: "directions_walk" },
   { value: "vendido", label: "Vendido", icon: "thumb_up" },
   { value: "perdido", label: "Perdido", icon: "thumb_down" },
-  { value: "pausado", label: "Pausado", icon: "pause_circle" },
-  { value: "nao_pausado", label: "Não pausado", icon: "play_circle" },
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200, 500, 1000];
@@ -102,6 +100,12 @@ function isUrgent(deal: Deal) {
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
   return (deal.tasks ?? []).some((t) => !t.done && t.due_date && new Date(t.due_date) <= endOfToday);
+}
+
+/** Tarefa pendente atrasada (prazo já passou) — diferente de `isUrgent`,
+ * vale em qualquer etapa do funil, não só Em Negociação/Proposta. */
+function isTaskOverdue(activity: { date: string | null } | null) {
+  return !!activity?.date && new Date(activity.date) < new Date();
 }
 
 function cardStatusBadge(deal: Deal) {
@@ -261,7 +265,7 @@ export default function CrmPage() {
     loadDeals();
   }
 
-  async function bulkStatus(status: "andamento" | "perdido" | "pausado" | "vendido") {
+  async function bulkStatus(status: "andamento" | "perdido" | "vendido") {
     if (status === "vendido") {
       setBulkBusy(true);
       await Promise.all([...selectedIds].map((id) => fetch(`/api/deals/${id}/close`, { method: "POST" })));
@@ -271,9 +275,8 @@ export default function CrmPage() {
       loadDeals();
       return;
     }
-    if (status === "andamento") return bulkPatch({ lost: false, paused: false });
-    if (status === "perdido") return bulkPatch({ lost: true });
-    return bulkPatch({ paused: true });
+    if (status === "andamento") return bulkPatch({ lost: false });
+    return bulkPatch({ lost: true });
   }
 
   async function bulkDelete() {
@@ -722,9 +725,6 @@ export default function CrmPage() {
                     <button onClick={() => bulkStatus("perdido")} style={bulkDropdownItemStyle}>
                       <span className="msym" style={{ fontSize: 15 }}>thumb_down</span> Perdido
                     </button>
-                    <button onClick={() => bulkStatus("pausado")} style={bulkDropdownItemStyle}>
-                      <span className="msym" style={{ fontSize: 15 }}>pause_circle</span> Pausado
-                    </button>
                     <button onClick={() => bulkStatus("vendido")} style={bulkDropdownItemStyle}>
                       <span className="msym" style={{ fontSize: 15 }}>thumb_up</span> Vendido
                     </button>
@@ -1065,24 +1065,32 @@ export default function CrmPage() {
                         {deal.value ? <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtBRL(deal.value)}</span> : null}
                       </div>
 
-                      {activity && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            fontSize: 11,
-                            marginBottom: 6,
-                            padding: "5px 8px",
-                            borderRadius: 8,
-                            background: "var(--surface-muted)",
-                            border: "1px solid var(--border)",
-                          }}
-                        >
-                          <span className="msym" style={{ fontSize: 13, color: "var(--accent-darker)" }}>{TASK_ICON[activity.type ?? ""] ?? "task_alt"}</span>
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activity.title}</span>
-                        </div>
-                      )}
+                      {activity && (() => {
+                        const overdue = isTaskOverdue(activity);
+                        return (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontSize: 11,
+                              marginBottom: 6,
+                              padding: "5px 8px",
+                              borderRadius: 8,
+                              background: overdue ? "#fee2e2" : "var(--surface-muted)",
+                              border: `1px solid ${overdue ? "#dc2626" : "var(--border)"}`,
+                              color: overdue ? "#dc2626" : undefined,
+                              fontWeight: overdue ? 700 : undefined,
+                            }}
+                          >
+                            <span className="msym" style={{ fontSize: 13, color: overdue ? "#dc2626" : "var(--accent-darker)" }}>
+                              {overdue ? "schedule" : TASK_ICON[activity.type ?? ""] ?? "task_alt"}
+                            </span>
+                            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activity.title}</span>
+                            {overdue && <span style={{ marginLeft: "auto", flexShrink: 0 }}>Atrasada</span>}
+                          </div>
+                        );
+                      })()}
 
                       <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-faint)" }}>
                         <span className="msym" style={{ fontSize: 13 }}>badge</span>

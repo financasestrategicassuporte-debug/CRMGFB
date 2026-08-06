@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   const [{ data: product, error: productError }, { data: deals, error: dealsError }, { data: spend, error: spendError }] =
     await Promise.all([
       supabase.from("plans").select("*").eq("id", params.id).single(),
-      supabase.from("deals").select("product_id,stage,qualification,revenue,value").eq("product_id", params.id),
+      supabase.from("deals").select("product_id,stage,qualification,revenue,value,lost_reason").eq("product_id", params.id),
       supabase.from("ad_spend").select("amount").eq("product_id", params.id),
     ]);
   if (productError) return dbError(productError);

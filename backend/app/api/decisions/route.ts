@@ -19,7 +19,7 @@ export async function GET() {
     { data: products, error: productsError },
     { data: spend, error: spendError },
   ] = await Promise.all([
-    supabase.from("deals").select("assigned_to,product_id,qualification,stage,revenue,value"),
+    supabase.from("deals").select("assigned_to,product_id,qualification,stage,revenue,value,lost_reason"),
     supabase.from("profiles").select("id,name,role").eq("active", true),
     supabase.from("conversations").select("sdr_id,created_at,messages(direction,created_at)"),
     supabase.from("plans").select("id,name").eq("active", true),

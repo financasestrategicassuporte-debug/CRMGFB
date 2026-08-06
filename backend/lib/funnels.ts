@@ -8,6 +8,7 @@ type Deal = {
   qualification: number | null;
   revenue: number | null;
   value: number | null;
+  lost_reason?: string | null;
 };
 
 // Ver comentário em lib/performance.ts sobre os estágios do kanban.
@@ -15,13 +16,19 @@ const STAGE_AGENDADO = 2;
 const STAGE_COMPARECEU = 3;
 const STAGE_FECHADO = 6;
 
+// Lead duplicado não é um lead real — não deve inflar nenhum indicador
+// (recebidos, qualificados, agendamentos etc.) em nenhuma tela que usa
+// computeFunnel (Dashboard Geral, Dashboard Produtos, Funis, Gargalos).
+const DUPLICATE_LOST_REASON = "Lead duplicado";
+
 export function computeFunnel(deals: Deal[]) {
-  const leads = deals.length;
-  const qualificados = deals.filter((d) => (d.qualification ?? 0) >= 3).length;
-  const agendamentos = deals.filter((d) => d.stage >= STAGE_AGENDADO).length;
-  const comparecimentos = deals.filter((d) => d.stage >= STAGE_COMPARECEU).length;
-  const vendas = deals.filter((d) => d.stage === STAGE_FECHADO).length;
-  const receita = deals
+  const validDeals = deals.filter((d) => d.lost_reason !== DUPLICATE_LOST_REASON);
+  const leads = validDeals.length;
+  const qualificados = validDeals.filter((d) => (d.qualification ?? 0) >= 3).length;
+  const agendamentos = validDeals.filter((d) => d.stage >= STAGE_AGENDADO).length;
+  const comparecimentos = validDeals.filter((d) => d.stage >= STAGE_COMPARECEU).length;
+  const vendas = validDeals.filter((d) => d.stage === STAGE_FECHADO).length;
+  const receita = validDeals
     .filter((d) => d.stage === STAGE_FECHADO)
     .reduce((sum, d) => sum + (d.revenue ?? d.value ?? 0), 0);
 

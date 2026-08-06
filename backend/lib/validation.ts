@@ -39,6 +39,7 @@ export const dealSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   product: z.string().optional(),
+  product_id: z.string().uuid().nullable().optional(),
   stage: z.number().int().min(0).max(6).optional(),
   value: z.number().nonnegative().optional(),
   task_type: z.string().optional(),

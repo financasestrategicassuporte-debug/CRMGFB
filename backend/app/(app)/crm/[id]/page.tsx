@@ -41,6 +41,7 @@ type Task = {
   assignee?: { id: string; name: string } | null;
 };
 type TeamMember = { id: string; name: string };
+type Plan = { id: string; name: string; active: boolean };
 
 const STAGES = [
   "Sem Contato / Leads",
@@ -77,6 +78,7 @@ const LOST_REASONS = [
   "Optou por não fechar o projeto",
   "Fechou com a concorrência",
   "Não consegui mais contato, pois sumiu",
+  "Lead duplicado",
 ];
 
 const FIRST_SALE_PHRASE = "Parabéns pela venda, é só o começo!";
@@ -156,6 +158,7 @@ export default function DealDetailPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
@@ -171,6 +174,9 @@ export default function DealDetailPage() {
   const [lostReason, setLostReason] = useState(LOST_REASONS[0]);
   const [showWonCelebration, setShowWonCelebration] = useState(false);
   const [celebration, setCelebration] = useState<{ phrase: string; saleNumber: number; monthRevenue: number; clientName: string } | null>(null);
+  const [showSaleForm, setShowSaleForm] = useState(false);
+  const [saleProductId, setSaleProductId] = useState("");
+  const [saleValor, setSaleValor] = useState("");
 
   async function load() {
     setLoading(true);
@@ -189,6 +195,7 @@ export default function DealDetailPage() {
       setProfileName(d.profile?.name ?? "");
     });
     fetch("/api/team").then((r) => r.json()).then((d) => setTeam(d.team ?? []));
+    fetch("/api/plans").then((r) => r.json()).then((d) => setPlans((d.plans ?? []).filter((p: Plan) => p.active)));
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -262,17 +269,6 @@ export default function DealDetailPage() {
     load();
   }
 
-  async function togglePaused() {
-    setBusy(true);
-    await fetch(`/api/deals/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paused: !deal?.paused }),
-    });
-    setBusy(false);
-    load();
-  }
-
   async function markWon() {
     setBusy(true);
     const res = await fetch(`/api/deals/${id}/close`, { method: "POST" });
@@ -292,6 +288,26 @@ export default function DealDetailPage() {
     setShowWonCelebration(true);
     playSaleSound();
     load();
+  }
+
+  function openSaleForm() {
+    setSaleProductId("");
+    setSaleValor("");
+    setShowSaleForm(true);
+  }
+
+  async function confirmSale(e: React.FormEvent) {
+    e.preventDefault();
+    const valorNumber = Number(saleValor);
+    if (!saleProductId || !valorNumber || valorNumber <= 0) return;
+    setBusy(true);
+    await fetch(`/api/deals/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product_id: saleProductId, revenue: valorNumber }),
+    });
+    setShowSaleForm(false);
+    await markWon();
   }
 
   async function createTask(e: React.FormEvent) {
@@ -381,7 +397,6 @@ export default function DealDetailPage() {
                 {deal.company_name ? `${deal.company_name} – ${deal.person_name}` : deal.person_name}
               </h1>
               {deal.lost && <span className="badge badge-late">Perdida</span>}
-              {!deal.lost && deal.paused && <span className="badge" style={{ background: "#fef3c7", color: "#b45309" }}>Pausada</span>}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -389,18 +404,12 @@ export default function DealDetailPage() {
               <span className="msym" style={{ fontSize: 16 }}>bolt</span> Qualificar SDR IA
             </button>
             {!deal.lost && deal.stage !== 6 && (
-              <button onClick={togglePaused} disabled={busy} style={{ ...btnDark, background: deal.paused ? "var(--accent-darker)" : "var(--bg-dark)" }}>
-                <span className="msym" style={{ fontSize: 16 }}>{deal.paused ? "play_circle" : "pause_circle"}</span>
-                {deal.paused ? "Retomar" : "Pausar"}
-              </button>
-            )}
-            {!deal.lost && deal.stage !== 6 && (
               <button onClick={() => setShowLostForm(true)} disabled={busy} style={btnOutlineDanger}>
                 <span className="msym" style={{ fontSize: 16 }}>thumb_down</span> Marcar perda
               </button>
             )}
             {deal.stage !== 6 && (
-              <button onClick={markWon} disabled={busy} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={openSaleForm} disabled={busy} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="msym" style={{ fontSize: 16 }}>paid</span> Marcar venda
               </button>
             )}
@@ -615,6 +624,51 @@ export default function DealDetailPage() {
           onClose={() => setShowQualify(false)}
           onSaved={load}
         />
+      )}
+
+      {showSaleForm && (
+        <div style={overlayStyle}>
+          <form onSubmit={confirmSale} className="card" style={{ width: 380, background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <h2 style={{ marginTop: 0, fontSize: 16 }}>Marcar negociação como vendida</h2>
+              <button type="button" onClick={() => setShowSaleForm(false)} style={{ border: "none", background: "none" }}>✕</button>
+            </div>
+            <label style={labelStyle}>Produto</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              {plans.map((plan) => (
+                <label key={plan.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+                  <input type="radio" name="sale_product" checked={saleProductId === plan.id} onChange={() => setSaleProductId(plan.id)} />
+                  {plan.name}
+                </label>
+              ))}
+              {plans.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>Nenhum produto ativo cadastrado.</div>}
+            </div>
+            <label style={labelStyle}>Valor da venda</label>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+              value={saleValor}
+              onChange={(e) => setSaleValor(e.target.value)}
+              placeholder="R$ 0,00"
+              style={{ ...inputStyle, marginBottom: 18 }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setShowSaleForm(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={busy || !saleProductId || !Number(saleValor) || Number(saleValor) <= 0}
+                className="btn-primary"
+                style={{ flex: 1, opacity: !saleProductId || !Number(saleValor) || Number(saleValor) <= 0 ? 0.5 : 1 }}
+              >
+                Confirmar venda
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {showLostForm && (
