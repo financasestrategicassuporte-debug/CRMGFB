@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Banner } from "../../banner";
 import { QualifyWizard } from "./qualify-wizard";
+import { useCall } from "../../call/call-context";
 
 type Deal = {
   id: string;
@@ -154,6 +155,7 @@ export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const call = useCall();
   const [role, setRole] = useState("admin");
   const [profileName, setProfileName] = useState("");
   const [deal, setDeal] = useState<Deal | null>(null);
@@ -419,6 +421,30 @@ export default function DealDetailPage() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                if (!deal.phone) return;
+                call.startCall({ id: deal.id, person_name: deal.person_name, company_name: deal.company_name, phone: deal.phone });
+              }}
+              disabled={!deal.phone}
+              title={deal.phone ? `Ligar para ${deal.phone}` : "Sem telefone cadastrado"}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                border: "none",
+                background: deal.phone ? "#b45309" : "var(--border)",
+                color: "#fff",
+                padding: 0,
+                cursor: deal.phone ? "pointer" : "not-allowed",
+                opacity: deal.phone ? 1 : 0.5,
+              }}
+            >
+              <span className="msym" style={{ fontSize: 18 }}>call</span>
+            </button>
             <button onClick={() => setShowQualify(true)} style={btnDark}>
               <span className="msym" style={{ fontSize: 16 }}>bolt</span> Qualificar SDR IA
             </button>
