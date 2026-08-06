@@ -61,6 +61,8 @@ export const dealSchema = z.object({
   lost: z.boolean().optional(),
   lost_reason: z.string().optional(),
   paused: z.boolean().optional(),
+  qualification: z.number().int().min(1).max(5).optional(),
+  score: z.number().int().min(0).max(100).optional(),
 });
 
 export const dealUpdateSchema = dealSchema.partial();
