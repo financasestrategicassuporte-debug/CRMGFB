@@ -1,0 +1,324 @@
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+
+export type CallableDeal = {
+  id: string;
+  person_name: string;
+  company_name: string | null;
+  phone: string | null;
+};
+
+export type CallPhase = "ready" | "in-call" | "wrap-up";
+
+export type CallResult = "Atendeu" | "Não atendeu" | "Agendou" | "Desqualificado";
+
+type CallState = {
+  open: boolean;
+  phase: CallPhase;
+  deal: CallableDeal | null;
+  massMode: boolean;
+  queue: CallableDeal[];
+  queueIndex: number;
+  callStartedAt: number | null;
+  elapsedSeconds: number;
+  transcript: string;
+  interim: string;
+  listening: boolean;
+  result: CallResult | null;
+  analyzing: boolean;
+  analysis: string | null;
+  autoAdvanceIn: number | null;
+};
+
+type CallContextValue = CallState & {
+  startCall: (deal: CallableDeal) => void;
+  startMassQueue: (deals: CallableDeal[]) => void;
+  dial: () => void;
+  setResult: (result: CallResult) => void;
+  endCall: () => void;
+  skipQueueItem: () => void;
+  cancelAutoAdvance: () => void;
+  stopMassQueue: () => void;
+  closeWidget: () => void;
+};
+
+const CallContext = createContext<CallContextValue | null>(null);
+
+const initialState: CallState = {
+  open: false,
+  phase: "ready",
+  deal: null,
+  massMode: false,
+  queue: [],
+  queueIndex: 0,
+  callStartedAt: null,
+  elapsedSeconds: 0,
+  transcript: "",
+  interim: "",
+  listening: false,
+  result: null,
+  analyzing: false,
+  analysis: null,
+  autoAdvanceIn: null,
+};
+
+const AUTO_ADVANCE_SECONDS = 8;
+
+function cleanPhone(phone: string | null) {
+  return (phone ?? "").replace(/\D/g, "");
+}
+
+function buildNoteBody(deal: CallableDeal, duration: number, result: CallResult | null, transcript: string, analysis: string | null) {
+  const now = new Date().toLocaleString("pt-BR");
+  const mm = String(Math.floor(duration / 60)).padStart(2, "0");
+  const ss = String(duration % 60).padStart(2, "0");
+  return `📞 REGISTRO DE LIGAÇÃO — Modo Ligação
+━━━━━━━━━━━━━━━━━━━━━━
+📅 Data/hora: ${now}
+📱 Telefone: ${deal.phone ?? "—"}
+⏱ Duração: ${mm}:${ss}
+🎯 Resultado: ${result ?? "Não informado"}
+━━━━━━━━━━━━━━━━━━━━━━
+🤖 ANÁLISE IA:
+${analysis || "(sem análise)"}
+━━━━━━━━━━━━━━━━━━━━━━
+🎙 TRANSCRIÇÃO:
+${transcript.trim() || "(sem transcrição registrada)"}`;
+}
+
+export function CallProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<CallState>(initialState);
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const recognitionRef = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const advanceRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+  }, []);
+
+  const stopRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null;
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setState((s) => (s.listening ? { ...s, listening: false } : s));
+  }, []);
+
+  const stopAutoAdvance = useCallback(() => {
+    if (advanceRef.current) clearInterval(advanceRef.current);
+    advanceRef.current = null;
+    setState((s) => (s.autoAdvanceIn !== null ? { ...s, autoAdvanceIn: null } : s));
+  }, []);
+
+  const startRecognition = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setState((s) => ({ ...s, interim: "⚠️ Navegador não suporta transcrição automática." }));
+      return;
+    }
+    const recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "pt-BR";
+    let finalText = "";
+    recognition.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript + " ";
+        else interim += e.results[i][0].transcript;
+      }
+      setState((s) => ({ ...s, transcript: finalText, interim }));
+    };
+    recognition.onerror = (e: any) => {
+      if (e.error === "no-speech") return;
+      setState((s) => ({ ...s, interim: `⚠️ Erro no microfone: ${e.error}` }));
+    };
+    recognition.onend = () => {
+      if (recognitionRef.current === recognition) recognition.start();
+    };
+    recognitionRef.current = recognition;
+    setState((s) => ({ ...s, listening: true }));
+    recognition.start();
+  }, []);
+
+  const startCall = useCallback((deal: CallableDeal) => {
+    stopTimer();
+    stopRecognition();
+    stopAutoAdvance();
+    setState({ ...initialState, open: true, phase: "ready", deal, massMode: false, queue: [], queueIndex: 0 });
+  }, [stopAutoAdvance, stopRecognition, stopTimer]);
+
+  const startMassQueue = useCallback((deals: CallableDeal[]) => {
+    stopTimer();
+    stopRecognition();
+    stopAutoAdvance();
+    const dialable = deals.filter((d) => cleanPhone(d.phone).length >= 8);
+    if (dialable.length === 0) return;
+    setState({ ...initialState, open: true, phase: "ready", deal: dialable[0], massMode: true, queue: dialable, queueIndex: 0 });
+  }, [stopAutoAdvance, stopRecognition, stopTimer]);
+
+  const dial = useCallback(() => {
+    const deal = stateRef.current.deal;
+    if (!deal) return;
+    const number = cleanPhone(deal.phone);
+    if (number) {
+      const a = document.createElement("a");
+      a.href = `tel:${number}`;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 500);
+    }
+    setState((s) => ({
+      ...s,
+      phase: "in-call",
+      callStartedAt: Date.now(),
+      elapsedSeconds: 0,
+      transcript: "",
+      interim: "",
+      result: null,
+      analysis: null,
+    }));
+    stopTimer();
+    timerRef.current = setInterval(() => {
+      setState((s) => (s.callStartedAt ? { ...s, elapsedSeconds: Math.floor((Date.now() - s.callStartedAt) / 1000) } : s));
+    }, 1000);
+    startRecognition();
+  }, [startRecognition, stopTimer]);
+
+  const setResult = useCallback((result: CallResult) => {
+    setState((s) => ({ ...s, result }));
+  }, []);
+
+  const advanceQueue = useCallback(() => {
+    setState((s) => {
+      const nextIndex = s.queueIndex + 1;
+      if (!s.massMode || nextIndex >= s.queue.length) {
+        return { ...initialState, open: false };
+      }
+      return { ...initialState, open: true, phase: "ready", deal: s.queue[nextIndex], massMode: true, queue: s.queue, queueIndex: nextIndex };
+    });
+  }, []);
+
+  const endCall = useCallback(() => {
+    stopTimer();
+    stopRecognition();
+
+    const s = stateRef.current;
+    const deal = s.deal;
+    if (!deal) return;
+    const duration = s.elapsedSeconds;
+    const transcript = s.transcript;
+    const result = s.result;
+    const massMode = s.massMode;
+
+    setState((cur) => ({ ...cur, phase: "wrap-up", analyzing: true }));
+
+    (async () => {
+      let analysis = "";
+      try {
+        const analyzeRes = await fetch("/api/ai/analyze-call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript }),
+        });
+        const analyzeData = await analyzeRes.json().catch(() => ({}));
+        analysis = analyzeData.analysis ?? "";
+      } catch {
+        analysis = "⚠️ Não foi possível analisar a ligação com IA.";
+      }
+
+      try {
+        await fetch(`/api/deals/${deal.id}/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body: buildNoteBody(deal, duration, result, transcript, analysis), is_ai_generated: true }),
+        });
+      } catch {
+        // se a anotação falhar, a análise ainda fica visível no widget pro usuário copiar
+      }
+
+      setState((cur) => (cur.deal?.id === deal.id ? { ...cur, analyzing: false, analysis } : cur));
+
+      if (massMode) {
+        let secondsLeft = AUTO_ADVANCE_SECONDS;
+        setState((cur) => (cur.deal?.id === deal.id ? { ...cur, autoAdvanceIn: secondsLeft } : cur));
+        if (advanceRef.current) clearInterval(advanceRef.current);
+        advanceRef.current = setInterval(() => {
+          secondsLeft -= 1;
+          if (secondsLeft <= 0) {
+            if (advanceRef.current) clearInterval(advanceRef.current);
+            advanceRef.current = null;
+            advanceQueue();
+            return;
+          }
+          setState((cur) => (cur.deal?.id === deal.id ? { ...cur, autoAdvanceIn: secondsLeft } : cur));
+        }, 1000);
+      }
+    })();
+  }, [advanceQueue, stopRecognition, stopTimer]);
+
+  const skipQueueItem = useCallback(() => {
+    stopAutoAdvance();
+    advanceQueue();
+  }, [advanceQueue, stopAutoAdvance]);
+
+  const cancelAutoAdvance = useCallback(() => {
+    stopAutoAdvance();
+  }, [stopAutoAdvance]);
+
+  const stopMassQueue = useCallback(() => {
+    stopAutoAdvance();
+    stopTimer();
+    stopRecognition();
+    setState({ ...initialState, open: false });
+  }, [stopAutoAdvance, stopTimer, stopRecognition]);
+
+  const closeWidget = useCallback(() => {
+    if (stateRef.current.phase === "in-call") {
+      if (!confirm("A ligação ainda está em andamento. Encerrar o widget mesmo assim?")) return;
+    }
+    stopAutoAdvance();
+    stopTimer();
+    stopRecognition();
+    setState({ ...initialState, open: false });
+  }, [stopAutoAdvance, stopTimer, stopRecognition]);
+
+  useEffect(() => {
+    return () => {
+      stopTimer();
+      stopRecognition();
+      stopAutoAdvance();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const value: CallContextValue = {
+    ...state,
+    startCall,
+    startMassQueue,
+    dial,
+    setResult,
+    endCall,
+    skipQueueItem,
+    cancelAutoAdvance,
+    stopMassQueue,
+    closeWidget,
+  };
+
+  return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
+}
+
+export function useCall() {
+  const ctx = useContext(CallContext);
+  if (!ctx) throw new Error("useCall precisa estar dentro de <CallProvider>");
+  return ctx;
+}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
+import { useCall } from "../call/call-context";
 
 type Deal = {
   id: string;
@@ -39,6 +40,10 @@ const STAGES = [
 ];
 
 const STAGE_NEGOCIACAO = 5;
+
+// Etapas padrão do Modo Ligação Massiva: leads ainda sem contato, com
+// contato feito mas sem avanço, e reuniões que precisam ser remarcadas.
+const MASS_CALL_DEFAULT_STAGES = [0, 1, 3];
 
 const TASK_ICON: Record<string, string> = {
   ligacao: "call",
@@ -108,6 +113,9 @@ function cardStatusBadge(deal: Deal) {
 
 export default function CrmPage() {
   const router = useRouter();
+  const call = useCall();
+  const [showMassCallModal, setShowMassCallModal] = useState(false);
+  const [massCallStages, setMassCallStages] = useState<Set<number>>(new Set(MASS_CALL_DEFAULT_STAGES));
   const [role, setRole] = useState("admin");
   const [pipeline, setPipeline] = useState<"quente" | "frio">("quente");
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -292,6 +300,26 @@ export default function CrmPage() {
     loadDeals();
   }
 
+  function toggleMassCallStage(stage: number) {
+    setMassCallStages((s) => {
+      const next = new Set(s);
+      if (next.has(stage)) next.delete(stage);
+      else next.add(stage);
+      return next;
+    });
+  }
+
+  function massCallCandidates() {
+    return deals.filter((d) => massCallStages.has(d.stage) && !d.lost && (d.phone ?? "").replace(/\D/g, "").length >= 8);
+  }
+
+  function startMassCall() {
+    const candidates = massCallCandidates();
+    if (candidates.length === 0) return;
+    call.startMassQueue(candidates.map((d) => ({ id: d.id, person_name: d.person_name, company_name: d.company_name, phone: d.phone })));
+    setShowMassCallModal(false);
+  }
+
   function bulkExport() {
     const rows = deals.filter((d) => selectedIds.has(d.id));
     const header = ["Negociação", "Responsável", "Qualificação", "Etapa", "Valor", "Data de criação", "Status"];
@@ -421,6 +449,13 @@ export default function CrmPage() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setShowMassCallModal(true)}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "#b45309", color: "#fff", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700 }}
+            >
+              <span className="msym" style={{ fontSize: 15 }}>phone_in_talk</span>
+              Modo Ligação Massiva
+            </button>
             {role === "admin" && (
               <button className="btn-primary" onClick={distribute} disabled={distributing} style={{ background: "var(--bg-dark)", fontSize: 13, padding: "9px 12px" }}>
                 <span className="msym" style={{ fontSize: 15, verticalAlign: "middle", marginRight: 4 }}>hub</span>
@@ -985,7 +1020,34 @@ export default function CrmPage() {
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: cardStatusBadge(deal).color, display: "inline-block" }} />
                           {cardStatusBadge(deal).label}
                         </span>
-                        <span className="msym" style={{ fontSize: 14, color: "var(--text-faint)" }}>info</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!deal.phone) return;
+                              call.startCall({ id: deal.id, person_name: deal.person_name, company_name: deal.company_name, phone: deal.phone });
+                            }}
+                            disabled={!deal.phone}
+                            title={deal.phone ? `Ligar para ${deal.phone}` : "Sem telefone cadastrado"}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 22,
+                              height: 22,
+                              borderRadius: "50%",
+                              border: "none",
+                              background: deal.phone ? "#b45309" : "var(--border)",
+                              color: "#fff",
+                              padding: 0,
+                              cursor: deal.phone ? "pointer" : "not-allowed",
+                              opacity: deal.phone ? 1 : 0.5,
+                            }}
+                          >
+                            <span className="msym" style={{ fontSize: 13 }}>call</span>
+                          </button>
+                          <span className="msym" style={{ fontSize: 14, color: "var(--text-faint)" }}>info</span>
+                        </div>
                       </div>
 
                       <div style={{ fontWeight: 700, fontSize: 12.5, lineHeight: 1.3, marginBottom: 6 }}>
@@ -1097,6 +1159,50 @@ export default function CrmPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showMassCallModal && (
+        <div style={overlayStyle}>
+          <div className="card" style={{ width: 400, background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <h2 style={{ marginTop: 0, fontSize: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="msym" style={{ fontSize: 18, color: "#b45309" }}>phone_in_talk</span>
+                Modo Ligação Massiva
+              </h2>
+              <button type="button" onClick={() => setShowMassCallModal(false)} style={{ border: "none", background: "none" }}>✕</button>
+            </div>
+            <p style={{ color: "var(--text-faint)", fontSize: 12.5, marginTop: -6, marginBottom: 14 }}>
+              Disca automaticamente, um lead atrás do outro, para todas as negociações com telefone cadastrado nas etapas selecionadas do funil {pipeline === "quente" ? "Quente" : "Frio"}. Configure seu softphone/VOIP como app padrão para links <code>tel:</code> no seu computador.
+            </p>
+            <label style={labelStyle}>Etapas incluídas</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+              {STAGES.map((label, i) => {
+                const count = deals.filter((d) => d.stage === i && !d.lost && (d.phone ?? "").replace(/\D/g, "").length >= 8).length;
+                return (
+                  <label key={label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}>
+                    <input type="checkbox" checked={massCallStages.has(i)} onChange={() => toggleMassCallStage(i)} />
+                    {label}
+                    <span style={{ marginLeft: "auto", color: "var(--text-faint)", fontSize: 11.5 }}>{count} com telefone</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setShowMassCallModal(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={startMassCall}
+                disabled={massCallCandidates().length === 0}
+                className="btn-primary"
+                style={{ flex: 1, opacity: massCallCandidates().length === 0 ? 0.5 : 1 }}
+              >
+                Iniciar ({massCallCandidates().length})
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

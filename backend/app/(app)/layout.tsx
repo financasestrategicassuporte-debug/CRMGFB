@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { NavLink } from "./nav-link";
 import { SairButton } from "./sair-button";
+import { CallMount } from "./call/call-mount";
 
 // Grupos e itens seguem exatamente a sidebar do mockup original
 // (GESTÃO / SISTEMA OPERACIONAL / INTELIGÊNCIA DE CLIENTES / EQUIPE) —
@@ -139,7 +140,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <main style={{ flex: 1, background: "var(--surface-muted)" }}>{children}</main>
+      <main style={{ flex: 1, background: "var(--surface-muted)" }}>
+        <CallMount>{children}</CallMount>
+      </main>
     </div>
   );
 }
