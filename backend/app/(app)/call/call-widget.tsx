@@ -65,11 +65,19 @@ export function CallWidget() {
     router.push(`/crm/${dealId}?lost=1&reason=${encodeURIComponent(NAO_TEM_INTERESSE_REASON)}`);
   }
 
-  async function handleConfirmarAgendamento() {
+  // "Sim" (tem interesse) vai direto pro Qualificar SDR IA — a data de
+  // retorno é só pra quem pediu "Me liga depois", não pra quem já quer
+  // agendar a consultoria de verdade.
+  function handleSimQualificar() {
     const dealId = deal.id;
+    call.endCall("Agendou");
+    router.push(`/crm/${dealId}?qualify=1`);
+  }
+
+  async function handleConfirmarAgendamento() {
     if (!agendarDateTime) return;
     setSavingAgendamento(true);
-    await fetch(`/api/deals/${dealId}/tasks`, {
+    await fetch(`/api/deals/${deal.id}/tasks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -80,23 +88,20 @@ export function CallWidget() {
     });
     call.endCall("Agendou");
     setSavingAgendamento(false);
-    router.push(`/crm/${dealId}?qualify=1`);
   }
 
-  const containerStyle: React.CSSProperties = call.massMode
-    ? {
-        position: "fixed",
-        inset: 0,
-        background: "rgba(13,42,32,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-      }
-    : { position: "fixed", right: 20, bottom: 20, zIndex: 9999 };
+  const containerStyle: React.CSSProperties = {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(13,42,32,0.45)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+  };
 
   const cardStyle: React.CSSProperties = {
-    width: call.massMode ? 380 : 320,
+    width: 380,
     background: "#fff",
     border: "1.5px solid var(--accent)",
     borderRadius: 14,
@@ -198,7 +203,7 @@ export function CallWidget() {
                         Entendo, a correria do dia a dia é grande, inclusive nós liberamos 1 hora de consultoria 100% gratuita, temos 3 vagas disponíveis. Tem interesse em agendar?
                       </p>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <button onClick={() => setScriptPhase("agendar")} className="btn-primary" style={{ padding: 10, fontSize: 13 }}>
+                        <button onClick={handleSimQualificar} className="btn-primary" style={{ padding: 10, fontSize: 13 }}>
                           Sim
                         </button>
                         <button onClick={() => setScriptPhase("agendar")} style={outlineBtnStyle}>
