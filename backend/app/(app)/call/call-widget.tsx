@@ -62,15 +62,19 @@ export function CallWidget() {
   async function handleNaoTemInteresse() {
     const dealId = deal.id;
     call.endCall("Desqualificado");
+    call.hideWidget();
     router.push(`/crm/${dealId}?lost=1&reason=${encodeURIComponent(NAO_TEM_INTERESSE_REASON)}`);
   }
 
   // "Sim" (tem interesse) vai direto pro Qualificar SDR IA — a data de
   // retorno é só pra quem pediu "Me liga depois", não pra quem já quer
-  // agendar a consultoria de verdade.
+  // agendar a consultoria de verdade. Fecha o widget na hora (em vez de
+  // deixar o card de wrap-up flutuando por cima do wizard) — a análise
+  // de IA e a anotação continuam salvando em background.
   function handleSimQualificar() {
     const dealId = deal.id;
     call.endCall("Agendou");
+    call.hideWidget();
     router.push(`/crm/${dealId}?qualify=1`);
   }
 

@@ -42,6 +42,7 @@ type CallContextValue = CallState & {
   cancelAutoAdvance: () => void;
   stopMassQueue: () => void;
   closeWidget: () => void;
+  hideWidget: () => void;
 };
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -304,6 +305,19 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setState({ ...initialState, open: false });
   }, [stopAutoAdvance, stopTimer, stopRecognition]);
 
+  // Fecha sem confirmação e sem checar fase — usado depois que o script
+  // já decidiu encerrar a ligação e vai navegar pra outra tela (deal
+  // detail com o Qualificar SDR IA ou o formulário de perda), pra o
+  // card de wrap-up não ficar flutuando por cima do modal de destino.
+  // A análise de IA e o salvamento da anotação continuam rodando em
+  // background (são closures independentes do estado do widget).
+  const hideWidget = useCallback(() => {
+    stopAutoAdvance();
+    stopTimer();
+    stopRecognition();
+    setState({ ...initialState, open: false });
+  }, [stopAutoAdvance, stopTimer, stopRecognition]);
+
   useEffect(() => {
     return () => {
       stopTimer();
@@ -325,6 +339,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     cancelAutoAdvance,
     stopMassQueue,
     closeWidget,
+    hideWidget,
   };
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
