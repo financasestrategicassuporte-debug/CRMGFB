@@ -167,6 +167,13 @@ export function QualifyWizard({ dealId, personName, sdrNome, pipeline, onClose, 
   const [encerrado, setEncerrado] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [plans, setPlans] = useState<{ id: string; name: string; active: boolean }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/plans")
+      .then((r) => r.json())
+      .then((d) => setPlans((d.plans ?? []).filter((p: { active: boolean }) => p.active)));
+  }, []);
 
   const steps = getSteps(answers);
   const currentKey = steps[stepIndex];
@@ -217,6 +224,13 @@ export function QualifyWizard({ dealId, personName, sdrNome, pipeline, onClose, 
 
     if (!encerrado && result) {
       const stars = Math.max(1, Math.min(5, Math.ceil(result.score / 20)));
+      // O diagnóstico já indica PAV ou Acelerador de Matrículas — grava o
+      // product_id na hora da qualificação (não só quando fecha a venda),
+      // pra "Funis por Produto" enxergar leads/qualificados/agendados/
+      // comparecidos em tempo real, não só as vendas já fechadas.
+      const produtoRecomendado = result.produto.includes("PAV")
+        ? plans.find((p) => p.name.includes("PAV"))
+        : plans.find((p) => p.name.includes("Acelerador"));
       await fetch(`/api/deals/${dealId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -224,6 +238,7 @@ export function QualifyWizard({ dealId, personName, sdrNome, pipeline, onClose, 
           qualification: stars,
           score: result.score,
           pipeline: result.resultado === "nao_agendar" ? "frio" : "quente",
+          ...(produtoRecomendado ? { product_id: produtoRecomendado.id } : {}),
         }),
       });
     }
