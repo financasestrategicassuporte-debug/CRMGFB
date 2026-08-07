@@ -295,22 +295,23 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setState({ ...initialState, open: false });
   }, [stopAutoAdvance, stopTimer, stopRecognition]);
 
+  // O botão ✕ decide sozinho (em call-widget.tsx) se precisa confirmar
+  // antes de chamar isso — mostra um modal no nosso próprio layout em
+  // vez do confirm() nativo do navegador, que não combina com o resto
+  // da plataforma.
   const closeWidget = useCallback(() => {
-    if (stateRef.current.phase === "in-call") {
-      if (!confirm("A ligação ainda está em andamento. Encerrar o widget mesmo assim?")) return;
-    }
     stopAutoAdvance();
     stopTimer();
     stopRecognition();
     setState({ ...initialState, open: false });
   }, [stopAutoAdvance, stopTimer, stopRecognition]);
 
-  // Fecha sem confirmação e sem checar fase — usado depois que o script
-  // já decidiu encerrar a ligação e vai navegar pra outra tela (deal
-  // detail com o Qualificar SDR IA ou o formulário de perda), pra o
-  // card de wrap-up não ficar flutuando por cima do modal de destino.
-  // A análise de IA e o salvamento da anotação continuam rodando em
-  // background (são closures independentes do estado do widget).
+  // Fecha sem checar fase — usado depois que o script já decidiu
+  // encerrar a ligação e vai navegar pra outra tela (deal detail com o
+  // Qualificar SDR IA ou o formulário de perda), pra o card de wrap-up
+  // não ficar flutuando por cima do modal de destino. A análise de IA e
+  // o salvamento da anotação continuam rodando em background (são
+  // closures independentes do estado do widget).
   const hideWidget = useCallback(() => {
     stopAutoAdvance();
     stopTimer();

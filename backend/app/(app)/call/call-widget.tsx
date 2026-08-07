@@ -34,12 +34,14 @@ export function CallWidget() {
   // quando o SDR precisa continuar numa outra tela — hoje só acontece
   // ao abrir o Qualificar SDR IA enquanto a ligação ainda está rolando.
   const [minimized, setMinimized] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   useEffect(() => {
     setScriptPhase(null);
     setAgendarDateTime("");
     setSavingAgendamento(false);
     setMinimized(false);
+    setShowCloseConfirm(false);
   }, [call.deal?.id]);
 
   if (!call.open || !call.deal) return null;
@@ -47,6 +49,14 @@ export function CallWidget() {
   const deal = call.deal;
   const title = deal.company_name ? `${deal.company_name} – ${deal.person_name}` : deal.person_name;
   const queuePosition = call.massMode ? `${call.queueIndex + 1}/${call.queue.length}` : null;
+
+  function handleCloseClick() {
+    if (call.phase === "in-call") {
+      setShowCloseConfirm(true);
+      return;
+    }
+    call.closeWidget();
+  }
 
   function handleResultClick(value: CallResult) {
     if (value === "Atendeu") {
@@ -155,7 +165,7 @@ export function CallWidget() {
                 <span className="msym" style={{ fontSize: 16 }}>open_in_full</span>
               </button>
             )}
-            <button onClick={call.closeWidget} style={{ border: "none", background: "none", color: "#fff", fontSize: 15, cursor: "pointer", lineHeight: 1 }}>
+            <button onClick={handleCloseClick} style={{ border: "none", background: "none", color: "#fff", fontSize: 15, cursor: "pointer", lineHeight: 1 }}>
               ✕
             </button>
           </div>
@@ -376,6 +386,44 @@ export function CallWidget() {
           )}
         </div>
       </div>
+
+      {showCloseConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10050,
+          }}
+        >
+          <div className="card" style={{ width: 340, background: "#fff", textAlign: "center", padding: 24 }}>
+            <span className="msym" style={{ fontSize: 34, color: "#dc2626" }}>warning</span>
+            <p style={{ fontSize: 13.5, lineHeight: 1.5, margin: "10px 0 20px" }}>
+              A ligação ainda está em andamento. Encerrar o widget mesmo assim?
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11, fontSize: 13, fontWeight: 700 }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowCloseConfirm(false);
+                  call.closeWidget();
+                }}
+                style={{ flex: 1, border: "none", borderRadius: 10, background: "var(--status-late-fg)", color: "#fff", padding: 11, fontSize: 13, fontWeight: 700 }}
+              >
+                Encerrar mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
