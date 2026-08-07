@@ -43,3 +43,14 @@ export async function awardSaleCommission(admin: SupabaseClient<Database>, dealI
     period: currentPeriod(),
   });
 }
+
+/** Motivo de perda que indica que a qualificação foi mal feita/mentida
+ * pelo SDR — quando o Closer marca a negociação como perdida com esse
+ * motivo exato, a comissão automática (reunião comparecida e/ou venda,
+ * se já tivesse fechado antes de reabrir) que o SDR ganhou por essa
+ * negociação é revogada. */
+export const LOST_REASON_REVOKES_SDR_COMMISSION = "Lead desqualificado — erro do SDR ou mentiu na qualificação";
+
+export async function revokeSdrCommission(admin: SupabaseClient<Database>, dealId: string) {
+  await admin.from("commissions").delete().eq("deal_id", dealId).in("tipo", ["reuniao", "venda"]);
+}

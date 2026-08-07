@@ -4,7 +4,7 @@ import { parseBody, dbError } from "@/lib/api";
 import { dealUpdateSchema } from "@/lib/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runImmediateDealAutomations } from "@/lib/dealAutomationEngine";
-import { awardMeetingCommission } from "@/lib/commissionRules";
+import { awardMeetingCommission, revokeSdrCommission, LOST_REASON_REVOKES_SDR_COMMISSION } from "@/lib/commissionRules";
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const { supabase } = await getCurrentProfile();
@@ -34,6 +34,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .select()
     .single();
   if (error) return dbError(error);
+
+  // Motivo de perda específico = qualificação errada/mentida do SDR —
+  // derruba qualquer comissão automática (reunião/venda) já lançada
+  // pra essa negociação.
+  if (payload.lost === true && payload.lost_reason === LOST_REASON_REVOKES_SDR_COMMISSION) {
+    try {
+      await revokeSdrCommission(createAdminClient(), params.id);
+    } catch {
+      // não deixa a revogação quebrar o PATCH
+    }
+  }
 
   // Regras "imediatas" (delay_days = 0) não podem esperar o cron diário —
   // o SDR precisa da tarefa (ligar/whatsapp) assim que o negócio entra na

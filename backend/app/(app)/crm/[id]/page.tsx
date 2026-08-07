@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Banner } from "../../banner";
 import { QualifyWizard } from "./qualify-wizard";
 import { useCall } from "../../call/call-context";
+import { LOST_REASON_REVOKES_SDR_COMMISSION } from "@/lib/commissionRules";
 
 type Deal = {
   id: string;
@@ -81,6 +82,7 @@ const LOST_REASONS = [
   "Não consegui mais contato, pois sumiu",
   "Lead duplicado",
   "Não tem interesse",
+  LOST_REASON_REVOKES_SDR_COMMISSION,
 ];
 
 const FIRST_SALE_PHRASE = "Parabéns pela venda, é só o começo!";
