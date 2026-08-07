@@ -67,6 +67,12 @@ const initialState: CallState = {
 
 const AUTO_ADVANCE_SECONDS = 8;
 
+// Só marca a tarefa "Ligação" como concluída se a chamada durou pelo
+// menos isso — evita que o SDR/Closer minta clicando "Ligar agora" e
+// desligando na hora sem falar com o lead. Tempo de verdade decidindo,
+// não um clique.
+const MIN_CALL_SECONDS_TO_COMPLETE_TASK = 20;
+
 function cleanPhone(phone: string | null) {
   return (phone ?? "").replace(/\D/g, "");
 }
@@ -205,29 +211,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setState((s) => (s.callStartedAt ? { ...s, elapsedSeconds: Math.floor((Date.now() - s.callStartedAt) / 1000) } : s));
     }, 1000);
     startRecognition();
-
-    // A ligação foi feita de verdade (discou) — qualquer tarefa "Ligação"
-    // ainda em aberto pra esse deal (manual ou criada pela automação de
-    // sequência) já conta como cumprida, sem precisar marcar a caixinha
-    // na mão depois.
-    (async () => {
-      try {
-        const res = await fetch(`/api/deals/${deal.id}/tasks`);
-        const data = await res.json();
-        const pendentes = (data.tasks ?? []).filter((t: any) => t.task_type === "ligacao" && !t.done);
-        await Promise.all(
-          pendentes.map((t: any) =>
-            fetch(`/api/deals/${deal.id}/tasks/${t.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ done: true }),
-            })
-          )
-        );
-      } catch {
-        // silencioso — não impacta a ligação em si
-      }
-    })();
   }, [startRecognition, stopTimer]);
 
   const setResult = useCallback((result: CallResult) => {
@@ -280,6 +263,28 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         });
       } catch {
         // se a anotação falhar, a análise ainda fica visível no widget pro usuário copiar
+      }
+
+      // Só marca a tarefa "Ligação" como concluída se a chamada durou de
+      // verdade — não no momento de discar (era possível "ligar" e
+      // desligar na hora só pra marcar a tarefa como feita).
+      if (duration >= MIN_CALL_SECONDS_TO_COMPLETE_TASK) {
+        try {
+          const tasksRes = await fetch(`/api/deals/${deal.id}/tasks`);
+          const tasksData = await tasksRes.json();
+          const pendentes = (tasksData.tasks ?? []).filter((t: any) => t.task_type === "ligacao" && !t.done);
+          await Promise.all(
+            pendentes.map((t: any) =>
+              fetch(`/api/deals/${deal.id}/tasks/${t.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ done: true }),
+              })
+            )
+          );
+        } catch {
+          // silencioso — não impacta o resto do wrap-up
+        }
       }
 
       setState((cur) => (cur.deal?.id === deal.id ? { ...cur, analyzing: false, analysis } : cur));
