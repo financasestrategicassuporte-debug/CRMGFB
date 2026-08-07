@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { parseBody, dbError } from "@/lib/api";
 import { dealUpdateSchema } from "@/lib/validation";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { runImmediateDealAutomations } from "@/lib/dealAutomationEngine";
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const { supabase } = await getCurrentProfile();
@@ -31,6 +33,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .select()
     .single();
   if (error) return dbError(error);
+
+  // Regras "imediatas" (delay_days = 0) não podem esperar o cron diário —
+  // o SDR precisa da tarefa (ligar/whatsapp) assim que o negócio entra na
+  // etapa. As com atraso continuam só pelo cron.
+  if (payload.stage !== undefined) {
+    try {
+      await runImmediateDealAutomations(createAdminClient(), params.id, payload.stage);
+    } catch {
+      // não deixa uma falha na automação quebrar a resposta do PATCH
+    }
+  }
+
   return NextResponse.json({ deal: data });
 }
 

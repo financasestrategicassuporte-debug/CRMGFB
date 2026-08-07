@@ -205,6 +205,29 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setState((s) => (s.callStartedAt ? { ...s, elapsedSeconds: Math.floor((Date.now() - s.callStartedAt) / 1000) } : s));
     }, 1000);
     startRecognition();
+
+    // A ligação foi feita de verdade (discou) — qualquer tarefa "Ligação"
+    // ainda em aberto pra esse deal (manual ou criada pela automação de
+    // sequência) já conta como cumprida, sem precisar marcar a caixinha
+    // na mão depois.
+    (async () => {
+      try {
+        const res = await fetch(`/api/deals/${deal.id}/tasks`);
+        const data = await res.json();
+        const pendentes = (data.tasks ?? []).filter((t: any) => t.task_type === "ligacao" && !t.done);
+        await Promise.all(
+          pendentes.map((t: any) =>
+            fetch(`/api/deals/${deal.id}/tasks/${t.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ done: true }),
+            })
+          )
+        );
+      } catch {
+        // silencioso — não impacta a ligação em si
+      }
+    })();
   }, [startRecognition, stopTimer]);
 
   const setResult = useCallback((result: CallResult) => {
