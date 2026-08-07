@@ -529,6 +529,7 @@ export type Database = {
           percent: number | null
           period: string
           status: string
+          tipo: string
         }
         Insert: {
           amount: number
@@ -539,6 +540,7 @@ export type Database = {
           percent?: number | null
           period?: string
           status?: string
+          tipo?: string
         }
         Update: {
           amount?: number
@@ -549,6 +551,7 @@ export type Database = {
           percent?: number | null
           period?: string
           status?: string
+          tipo?: string
         }
         Relationships: [
           {

@@ -43,10 +43,16 @@ const NAV_GROUPS_ADMIN = [
   },
 ];
 
-// SDR/Closer só veem o próprio CRM por enquanto (Performance/Chats/
-// Comissões específicos deles entram numa próxima fase).
+// SDR/Closer só veem o próprio CRM e as próprias comissões por enquanto
+// (Performance/Chats específicos deles entram numa próxima fase).
 const NAV_GROUPS_TEAM = [
-  { label: "GESTÃO", items: [{ href: "/crm", icon: "contacts", label: "Meu CRM" }] },
+  {
+    label: "GESTÃO",
+    items: [
+      { href: "/crm", icon: "contacts", label: "Meu CRM" },
+      { href: "/comissoes", icon: "savings", label: "Minhas Comissões" },
+    ],
+  },
 ];
 
 /** Sidebar comum às páginas logadas — mesmo visual do mockup original
