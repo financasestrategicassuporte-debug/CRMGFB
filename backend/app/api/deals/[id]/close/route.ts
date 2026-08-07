@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { dbError } from "@/lib/api";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { awardSaleCommission } from "@/lib/commissionRules";
 
 /** Fecha a negociação (venda ganha): move o deal pro estágio final
  * (Acompanhamento) e cria o `client` correspondente já com o playbook
@@ -74,6 +76,15 @@ export async function POST(_request: Request, { params }: { params: { id: string
     .select()
     .single();
   if (updateError) return dbError(updateError);
+
+  // Bônus de fechamento pro SDR dono da negociação — comissão por venda
+  // além da de reunião comparecida (a constraint (deal_id, tipo) evita
+  // duplicar se o deal já tivesse sido fechado e reaberto).
+  try {
+    await awardSaleCommission(createAdminClient(), params.id, deal.assigned_to);
+  } catch {
+    // não deixa a comissão quebrar o fechamento da venda
+  }
 
   const monthStart = `${today.toISOString().slice(0, 7)}-01`;
   const { data: monthPurchases } = await supabase.from("purchases").select("valor").gte("data", monthStart);

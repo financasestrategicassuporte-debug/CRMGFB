@@ -148,7 +148,7 @@ export const commissionSchema = z.object({
   percent: z.number().nonnegative().optional(),
   status: z.enum(["pending", "paid"]).optional(),
   period: z.string().optional(),
-  tipo: z.enum(["fixo", "extra", "venda"]).optional(),
+  tipo: z.enum(["fixo", "extra", "venda", "reuniao"]).optional(),
 });
 
 export const leadSchema = z.object({

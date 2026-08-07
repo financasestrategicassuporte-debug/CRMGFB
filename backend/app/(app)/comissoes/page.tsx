@@ -9,14 +9,14 @@ type Commission = {
   percent: number | null;
   status: "pending" | "paid";
   period: string;
-  tipo: "fixo" | "extra" | "venda";
+  tipo: "fixo" | "extra" | "venda" | "reuniao";
   closer: { id: string; name: string; initials: string | null } | null;
   deal: { id: string; person_name: string } | null;
 };
 
 type TeamMember = { id: string; name: string; role: string };
 
-const TIPO_LABEL: Record<string, string> = { fixo: "Fixo", extra: "Extra", venda: "Por venda" };
+const TIPO_LABEL: Record<string, string> = { fixo: "Fixo", extra: "Extra", venda: "Por venda", reuniao: "Reunião comparecida" };
 
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -202,8 +202,19 @@ export default function ComissoesPage() {
 
             <section className="card">
               <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>event_available</span>
+                Reuniões qualificadas comparecidas · automático (SDR)
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {byTipo("reuniao").map((c) => <CommissionRow key={c.id} c={c} />)}
+                {byTipo("reuniao").length === 0 && <p style={{ color: "var(--text-faint)" }}>Nenhuma reunião comparecida com comissão ainda.</p>}
+              </div>
+            </section>
+
+            <section className="card">
+              <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>handshake</span>
-                Por venda fechada
+                Por venda fechada · automático (SDR)
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {byTipo("venda").map((c) => <CommissionRow key={c.id} c={c} />)}

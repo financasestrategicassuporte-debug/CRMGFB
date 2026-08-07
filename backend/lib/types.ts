@@ -829,6 +829,7 @@ export type Database = {
           company_name: string | null
           created_at: string
           email: string | null
+          first_attended_at: string | null
           first_contacted_at: string | null
           forecast: string | null
           id: string
@@ -867,6 +868,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           email?: string | null
+          first_attended_at?: string | null
           first_contacted_at?: string | null
           forecast?: string | null
           id?: string
@@ -905,6 +907,7 @@ export type Database = {
           company_name?: string | null
           created_at?: string
           email?: string | null
+          first_attended_at?: string | null
           first_contacted_at?: string | null
           forecast?: string | null
           id?: string
