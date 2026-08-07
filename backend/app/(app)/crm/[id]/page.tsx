@@ -188,7 +188,7 @@ export default function DealDetailPage() {
     const dealData = await dealRes.json();
     const tasksData = await tasksRes.json();
     setDeal(dealData.deal);
-    setNotes(dealData.deal?.notes ?? []);
+    setNotes([...(dealData.deal?.notes ?? [])].sort((a: Note, b: Note) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
     setTasks(tasksData.tasks ?? []);
     setLoading(false);
   }
