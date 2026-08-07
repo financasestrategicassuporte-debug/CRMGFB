@@ -4,9 +4,9 @@ const ROLE_PILLS = [
   { id: "closer", icon: "handshake", label: "Closer" },
 ] as const;
 
-/** Banner superior de toda página logada — título, subtítulo, os 3 pills
- * de papel (mostram o papel atual do usuário, sem trocar sessão — quem
- * decide o papel de verdade é o login) e o botão "Agendar Sessão". */
+/** Banner superior de toda página logada — título, subtítulo e os 3
+ * pills de papel (mostram o papel atual do usuário, sem trocar sessão —
+ * quem decide o papel de verdade é o login). */
 export function Banner({
   title,
   subtitle,
@@ -63,11 +63,6 @@ export function Banner({
             );
           })}
         </div>
-
-        <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span className="msym" style={{ fontSize: 16 }}>event_available</span>
-          Agendar Sessão
-        </button>
       </div>
     </header>
   );
