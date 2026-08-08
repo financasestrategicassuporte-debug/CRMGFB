@@ -9,7 +9,12 @@ import { computeSdrStat } from "@/lib/performance";
  * convertido em negociação e distribuído sozinho, na estratégia
  * configurada — mesma lógica de conversão de `POST /api/leads/:id/convert`
  * e do motor de `POST /api/leads/distribute`, só que rodando sem
- * intervenção manual. */
+ * intervenção manual.
+ *
+ * Quente e frio são distribuídos em duas rodadas separadas (não misturadas
+ * num único round-robin/balanceamento) — mesmo comportamento que a
+ * distribuição manual sempre teve, já que cada aba (Leads Quentes/Frios)
+ * só agia sobre os leads daquele funil. */
 export async function autoDistributeNewLeads(admin: SupabaseClient<Database>, leadIds: string[]) {
   if (leadIds.length === 0) return { converted: 0, distributed: 0 };
 
@@ -19,12 +24,14 @@ export async function autoDistributeNewLeads(admin: SupabaseClient<Database>, le
   const { data: leads } = await admin.from("leads").select("*").in("id", leadIds).is("converted_deal_id", null);
   if (!leads || leads.length === 0) return { converted: 0, distributed: 0 };
 
-  const dealIds: string[] = [];
+  const quenteDealIds: string[] = [];
+  const frioDealIds: string[] = [];
   for (const lead of leads) {
+    const pipeline = lead.source?.includes("quente") ? "quente" : "frio";
     const { data: deal, error } = await admin
       .from("deals")
       .insert({
-        pipeline: lead.source?.includes("quente") ? "quente" : "frio",
+        pipeline,
         person_name: lead.name,
         phone: lead.phone,
         email: lead.email,
@@ -41,9 +48,10 @@ export async function autoDistributeNewLeads(admin: SupabaseClient<Database>, le
       .single();
     if (error || !deal) continue;
     await admin.from("leads").update({ converted_deal_id: deal.id }).eq("id", lead.id);
-    dealIds.push(deal.id);
+    (pipeline === "quente" ? quenteDealIds : frioDealIds).push(deal.id);
   }
 
+  const dealIds = [...quenteDealIds, ...frioDealIds];
   if (dealIds.length === 0 || settings.strategy === "manual") {
     return { converted: dealIds.length, distributed: 0 };
   }
@@ -59,11 +67,13 @@ export async function autoDistributeNewLeads(admin: SupabaseClient<Database>, le
     const stat = computeSdrStat(sdr.id, deals ?? [], conversations ?? []);
     return { id: sdr.id, cargaAtual: stat.recebidos, taxaAgendamento: stat.taxaAgendamento };
   });
-  const atribuicoes = distributeLeads(
-    (deals ?? []).map((d) => ({ id: d.id })),
-    candidatos,
-    settings.strategy as DistributionStrategy
-  );
+  const dealsById = new Map((deals ?? []).map((d) => [d.id, d]));
+  const strategy = settings.strategy as DistributionStrategy;
+
+  const atribuicoes: Record<string, string> = {
+    ...distributeLeads(quenteDealIds.filter((id) => dealsById.has(id)).map((id) => ({ id })), candidatos, strategy),
+    ...distributeLeads(frioDealIds.filter((id) => dealsById.has(id)).map((id) => ({ id })), candidatos, strategy),
+  };
 
   await Promise.all(
     Object.entries(atribuicoes).map(([dealId, sdrId]) => admin.from("deals").update({ assigned_to: sdrId }).eq("id", dealId))

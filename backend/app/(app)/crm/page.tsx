@@ -158,7 +158,6 @@ export default function CrmPage() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [distributing, setDistributing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newDeal, setNewDeal] = useState({ company_name: "", person_name: "", phone: "", value: "" });
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -246,22 +245,6 @@ export default function CrmPage() {
     setDraggedId(null);
     if (!dragged || dragged.stage === stage) return;
     moveToStage(draggedId, stage);
-  }
-
-  async function distribute() {
-    setDistributing(true);
-    const unassigned = deals.filter((d) => !d.assigned_to).map((d) => d.id);
-    if (unassigned.length === 0) {
-      setDistributing(false);
-      return;
-    }
-    await fetch("/api/leads/distribute", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lead_ids: unassigned, strategy: "peso" }),
-    });
-    setDistributing(false);
-    loadDeals();
   }
 
   function toggleSelect(id: string) {
@@ -488,12 +471,6 @@ export default function CrmPage() {
               <span className="msym" style={{ fontSize: 15 }}>phone_in_talk</span>
               Modo Ligação Massiva
             </button>
-            {role === "admin" && (
-              <button className="btn-primary" onClick={distribute} disabled={distributing} style={{ background: "var(--bg-dark)", fontSize: 13, padding: "9px 12px" }}>
-                <span className="msym" style={{ fontSize: 15, verticalAlign: "middle", marginRight: 4 }}>hub</span>
-                {distributing ? "Distribuindo…" : "Distribuir por Performance"}
-              </button>
-            )}
             <button className="btn-primary" onClick={() => setShowForm(true)} style={{ fontSize: 13, padding: "9px 14px" }}>
               + Criar
             </button>
