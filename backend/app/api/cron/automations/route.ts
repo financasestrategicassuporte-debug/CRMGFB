@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTargets, buildMessage, type ConditionJson } from "@/lib/automationEngine";
 import { runDealAutomations } from "@/lib/dealAutomationEngine";
 import { syncLeadsFromSheet } from "@/lib/leadImport";
+import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 import { sendWhatsapp } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/email";
 
@@ -76,6 +77,15 @@ export async function GET(request: Request) {
     syncLeadsFromSheet(admin, "quente"),
     syncLeadsFromSheet(admin, "frio"),
   ]);
+
+  const novosLeadIds = [...leadsQuente.insertedIds, ...leadsFrio.insertedIds];
+  if (novosLeadIds.length > 0) {
+    try {
+      await autoDistributeNewLeads(admin, novosLeadIds);
+    } catch {
+      // não deixa a distribuição automática quebrar o cron
+    }
+  }
 
   return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio });
 }

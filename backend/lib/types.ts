@@ -1023,6 +1023,30 @@ export type Database = {
           },
         ]
       }
+      lead_distribution_settings: {
+        Row: {
+          auto_enabled: boolean
+          id: string
+          paused: boolean
+          strategy: string
+          updated_at: string
+        }
+        Insert: {
+          auto_enabled?: boolean
+          id?: string
+          paused?: boolean
+          strategy?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_enabled?: boolean
+          id?: string
+          paused?: boolean
+          strategy?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           ad: string | null

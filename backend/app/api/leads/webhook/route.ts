@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapQuenteRow, mapFrioRow } from "@/lib/integrations/sheets";
 import { insertLeadIfNew } from "@/lib/leadImport";
+import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 
 /** Recebe, em tempo real, a linha recém-adicionada em uma das planilhas
  * (Apps Script instalado na própria planilha chama isto no exato momento
@@ -29,6 +30,13 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   try {
     const result = await insertLeadIfNew(admin, { ...lead, source: `sheets_${source}` });
+    if (result.inserted && result.lead?.id) {
+      try {
+        await autoDistributeNewLeads(admin, [result.lead.id as string]);
+      } catch {
+        // não deixa a distribuição automática quebrar o webhook
+      }
+    }
     return NextResponse.json(result, { status: result.inserted ? 201 : 200 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Erro desconhecido" }, { status: 400 });

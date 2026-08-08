@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncLeadsFromSheet } from "@/lib/leadImport";
+import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 
 /** Puxa leads da planilha do funil quente ou frio (`?source=quente|frio`)
  * sob demanda — o mesmo sync também roda sozinho 1x/dia (ver
@@ -23,5 +24,12 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
   const result = await syncLeadsFromSheet(admin, source);
+  if (result.insertedIds.length > 0) {
+    try {
+      await autoDistributeNewLeads(admin, result.insertedIds);
+    } catch {
+      // não deixa a distribuição automática quebrar o import
+    }
+  }
   return NextResponse.json(result);
 }

@@ -34,6 +34,33 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function fmtDateShort(isoDate: string) {
+  const [y, m, d] = isoDate.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+function toISODate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function datePresets(): { label: string; from: string; to: string }[] {
+  const today = new Date();
+  const daysAgo = (n: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - n);
+    return d;
+  };
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  return [
+    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
+    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
+    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
+    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
+  ];
+}
+
 const SOURCE_LABEL: Record<string, string> = {
   sheets_quente: "Planilha · Aplicação Webinário",
   sheets_frio: "Planilha · Meta Lead Ads",
@@ -59,6 +86,12 @@ export default function LeadsRecebidosPage() {
   const [importing, setImporting] = useState<"quente" | "frio" | null>(null);
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDateMenu, setShowDateMenu] = useState(false);
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoPaused, setAutoPaused] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   async function loadSilently() {
     const res = await fetch("/api/leads");
@@ -72,9 +105,30 @@ export default function LeadsRecebidosPage() {
     setLoading(false);
   }
 
+  async function loadSettings() {
+    const res = await fetch("/api/lead-distribution-settings");
+    const data = await res.json();
+    if (data.settings) {
+      setStrategy(data.settings.strategy ?? "round_robin");
+      setAutoEnabled(!!data.settings.auto_enabled);
+      setAutoPaused(!!data.settings.paused);
+    }
+  }
+
+  async function saveSettings(patch: { strategy?: string; auto_enabled?: boolean; paused?: boolean }) {
+    setSavingSettings(true);
+    await fetch("/api/lead-distribution-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    setSavingSettings(false);
+  }
+
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setRole(d.profile?.role ?? "admin"));
     load();
+    loadSettings();
 
     // Enquanto a página estiver aberta, verifica novidade nas duas
     // planilhas a cada 20s e atualiza a lista sozinha — sem precisar de
@@ -162,7 +216,14 @@ export default function LeadsRecebidosPage() {
     }
   }
 
-  const filtered = leads.filter((l) => (tab === "quente" ? isQuente(l) : !isQuente(l)));
+  const filtered = leads.filter((l) => {
+    const matchesTab = tab === "quente" ? isQuente(l) : !isQuente(l);
+    if (!matchesTab) return false;
+    const createdDate = l.created_at.slice(0, 10);
+    if (dateFrom && createdDate < dateFrom) return false;
+    if (dateTo && createdDate > dateTo) return false;
+    return true;
+  });
   const allIds = filtered.map((l) => l.id);
 
   return (
@@ -205,7 +266,8 @@ export default function LeadsRecebidosPage() {
 
         {message && <p style={{ color: "var(--accent-darker)", fontSize: 13, marginBottom: 14 }}>{message}</p>}
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <button
             onClick={() => setTab("quente")}
             style={{
@@ -242,6 +304,107 @@ export default function LeadsRecebidosPage() {
           </button>
         </div>
 
+        <div style={{ position: "relative" }}>
+          {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+          <button
+            onClick={() => setShowDateMenu((v) => !v)}
+            style={{
+              position: "relative",
+              zIndex: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "#fff",
+              color: "var(--text)",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>calendar_month</span>
+            {dateFrom || dateTo ? `${dateFrom ? fmtDateShort(dateFrom) : "…"} – ${dateTo ? fmtDateShort(dateTo) : "hoje"}` : "Período"}
+            <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+          </button>
+          {showDateMenu && (
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 4px)",
+                background: "#fff",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                zIndex: 20,
+                minWidth: 230,
+                padding: 12,
+              }}
+            >
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
+                Filtrar por data de recebimento
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                {datePresets().map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setDateFrom(p.from);
+                      setDateTo(p.to);
+                      setShowDateMenu(false);
+                    }}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 999,
+                      background: dateFrom === p.from && dateTo === p.to ? "var(--status-ok-bg)" : "#fff",
+                      color: dateFrom === p.from && dateTo === p.to ? "var(--accent-darker)" : "var(--text)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "4px 9px",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 6, textTransform: "uppercase" }}>
+                Personalizado
+              </div>
+              <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
+              />
+              <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Até</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 10 }}
+              />
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                  style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: "6px 0", fontSize: 12 }}
+                >
+                  Ver tudo
+                </button>
+                <button onClick={() => setShowDateMenu(false)} className="btn-primary" style={{ flex: 1, padding: "6px 0", fontSize: 12 }}>
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        </div>
+
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
             <span className="msym" style={{ fontSize: 20, color: "var(--accent-darker)" }}>sync_alt</span>
@@ -254,7 +417,10 @@ export default function LeadsRecebidosPage() {
             {STRATEGY_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setStrategy(opt.value)}
+                onClick={() => {
+                  setStrategy(opt.value);
+                  saveSettings({ strategy: opt.value });
+                }}
                 style={{
                   textAlign: "left",
                   border: `1px solid ${strategy === opt.value ? "var(--accent)" : "var(--border)"}`,
@@ -270,6 +436,77 @@ export default function LeadsRecebidosPage() {
                 <div style={{ fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.3 }}>{opt.desc}</div>
               </button>
             ))}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+              background: autoEnabled && !autoPaused ? "var(--status-ok-bg)" : "var(--surface-muted)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="msym" style={{ fontSize: 20, color: autoEnabled && !autoPaused ? "var(--accent-darker)" : "var(--text-faint)" }}>
+                bolt
+              </span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>Distribuir automaticamente</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
+                  {autoEnabled
+                    ? autoPaused
+                      ? "Ligado, mas pausado agora — leads novos ficam esperando na lista."
+                      : `Ligado — todo lead novo já cai como negociação e é distribuído (${STRATEGY_OPTIONS.find((s) => s.value === strategy)?.label}).`
+                    : "Desligado — leads novos ficam aqui até você converter e distribuir manualmente."}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {autoEnabled && (
+                <button
+                  disabled={savingSettings}
+                  onClick={() => {
+                    const next = !autoPaused;
+                    setAutoPaused(next);
+                    saveSettings({ paused: next });
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    background: "#fff",
+                    padding: "7px 12px",
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                  }}
+                >
+                  <span className="msym" style={{ fontSize: 15 }}>{autoPaused ? "play_circle" : "pause_circle"}</span>
+                  {autoPaused ? "Retomar" : "Pausar"}
+                </button>
+              )}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  disabled={savingSettings}
+                  checked={autoEnabled}
+                  onChange={() => {
+                    const next = !autoEnabled;
+                    setAutoEnabled(next);
+                    saveSettings({ auto_enabled: next, paused: false });
+                    setAutoPaused(false);
+                  }}
+                />
+                <span style={{ fontSize: 12.5, fontWeight: 700 }}>Ativado</span>
+              </label>
+            </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
