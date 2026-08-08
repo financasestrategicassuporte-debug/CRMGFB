@@ -6,7 +6,10 @@ import { dealSchema } from "@/lib/validation";
 /** "Status da negociação" — filtro único no topo do CRM (dropdown do
  * mockup): combina lost/stage numa única seleção pro usuário, em vez de
  * expor cada flag como um parâmetro separado.
- *   - andamento: ativa, não vendida, não perdida (default)
+ *   - andamento: não perdida (default) — inclui "Acompanhamento"
+ *     (stage 6/vendido), que é uma das 7 colunas visíveis do kanban;
+ *     excluir stage 6 daqui fazia o card sumir do quadro assim que
+ *     alguém movia pra frente até a última coluna.
  *   - vendido: stage 6, não perdida
  *   - perdido: lost = true
  *   - all: sem filtro nenhum */
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
 
   switch (status) {
     case "andamento":
-      query = query.eq("lost", false).neq("stage", 6);
+      query = query.eq("lost", false);
       break;
     case "vendido":
       query = query.eq("stage", 6).eq("lost", false);
