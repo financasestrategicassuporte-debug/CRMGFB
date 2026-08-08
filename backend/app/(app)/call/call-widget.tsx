@@ -98,15 +98,32 @@ export function CallWidget() {
   async function handleConfirmarAgendamento() {
     if (!agendarDateTime) return;
     setSavingAgendamento(true);
-    await fetch(`/api/deals/${deal.id}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: "Retorno agendado (script workshop)",
-        task_type: "ligacao",
-        due_date: new Date(agendarDateTime).toISOString(),
+    const dueDate = new Date(agendarDateTime);
+    const dueDateLabel = dueDate.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+    // Cria a tarefa E já documenta o agendamento na hora — não depende
+    // do resumo de IA (que pode estar desativado ou demorar) pra deixar
+    // registrado que o lead pediu pra ligar de volta em tal horário.
+    await Promise.all([
+      fetch(`/api/deals/${deal.id}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Ligação agendada",
+          task_type: "ligacao",
+          due_date: dueDate.toISOString(),
+        }),
       }),
-    });
+      fetch(`/api/deals/${deal.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          body: `📅 Retorno agendado\nO lead pediu pra ligar de volta em ${dueDateLabel} (definido durante a ligação · script workshop).`,
+          is_ai_generated: true,
+        }),
+      }),
+    ]);
+
     call.endCall("Agendou");
     setSavingAgendamento(false);
   }
