@@ -7,16 +7,18 @@ import { syncLeadsFromSheet } from "@/lib/leadImport";
 import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 import { sendWhatsapp } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/email";
+import { syncMarketingSpend } from "@/lib/integrations/marketingSpend";
 
-/** Roda 1x/dia (ver vercel.json) e faz três coisas: (1) avalia as
- * automações de playbook ativas contra o estado atual dos clientes,
- * evitando disparar duas vezes no mesmo dia (checa `automation_runs` de
- * hoje antes de agir) — envio de verdade passa pelos adapters de
- * `lib/integrations/*`, que sem credencial configurada só logam; (2) roda
- * as automações de etapa do CRM (`runDealAutomations`); (3) sincroniza os
- * leads novos das duas planilhas (quente/frio) — o mesmo sync também
- * roda toda vez que alguém abre `/leads`, então isso é só o "modo
- * automático" pra quando ninguém está com a página aberta. */
+/** Roda 1x/dia (ver vercel.json): (1) avalia as automações de playbook
+ * ativas contra o estado atual dos clientes, evitando disparar duas
+ * vezes no mesmo dia (checa `automation_runs` de hoje antes de agir) —
+ * envio de verdade passa pelos adapters de `lib/integrations/*`, que
+ * sem credencial configurada só logam; (2) roda as automações de etapa
+ * do CRM (`runDealAutomations`); (3) sincroniza os leads novos das duas
+ * planilhas (quente/frio) — o mesmo sync também roda toda vez que
+ * alguém abre `/leads`; (4) sincroniza o investimento real em mídia do
+ * dashboard de marketing pra `ad_spend` — mesmo sync também roda ao
+ * abrir Dashboard/Dashboard de Produtos. */
 export async function GET(request: Request) {
   const forbidden = verifyCronSecret(request);
   if (forbidden) return forbidden;
@@ -73,9 +75,10 @@ export async function GET(request: Request) {
 
   const dealResult = await runDealAutomations(admin);
 
-  const [leadsQuente, leadsFrio] = await Promise.all([
+  const [leadsQuente, leadsFrio, spendResult] = await Promise.all([
     syncLeadsFromSheet(admin, "quente"),
     syncLeadsFromSheet(admin, "frio"),
+    syncMarketingSpend(admin),
   ]);
 
   const novosLeadIds = [...leadsQuente.insertedIds, ...leadsFrio.insertedIds];
@@ -87,5 +90,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio });
+  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio, spendResult });
 }

@@ -22,11 +22,18 @@ export default function ProdutosPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/products/dashboard")
-      .then((r) => r.json())
-      .then((data) => {
-        setRows(data.products ?? []);
-        setLoading(false);
+    // Puxa o investimento real em mídia pra ad_spend antes de carregar —
+    // mesmo sync do Dashboard Geral (só cobre o investimento geral, ver
+    // nota abaixo sobre o cruzamento por produto).
+    fetch("/api/ad-spend/sync")
+      .catch(() => {})
+      .finally(() => {
+        fetch("/api/products/dashboard")
+          .then((r) => r.json())
+          .then((data) => {
+            setRows(data.products ?? []);
+            setLoading(false);
+          });
       });
   }, []);
 

@@ -98,6 +98,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => setRole(d.profile?.role ?? "admin"));
+    // Puxa o investimento real em mídia do dashboard de marketing pra
+    // ad_spend ao abrir a tela — o poll de 20s do funil já pega o valor
+    // atualizado na sequência, sem precisar de botão nenhum.
+    fetch("/api/ad-spend/sync").catch(() => {});
   }, []);
 
   useEffect(() => {

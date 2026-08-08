@@ -36,10 +36,13 @@ export function computeFunnel(deals: Deal[]) {
 }
 
 export function computeProductEconomics(funnel: ReturnType<typeof computeFunnel>, investimento: number) {
-  const { agendamentos, vendas, receita } = funnel;
+  const { comparecimentos, vendas, receita } = funnel;
   return {
     investimento,
-    custoPorReuniao: agendamentos > 0 ? investimento / agendamentos : 0,
+    // Custo por reunião usa comparecimentos (reuniões que de fato
+    // aconteceram), não agendamentos (marcadas, mas nem toda marcada
+    // acontece) — fórmula: investimento / reuniões acontecidas.
+    custoPorReuniao: comparecimentos > 0 ? investimento / comparecimentos : 0,
     custoPorVenda: vendas > 0 ? investimento / vendas : 0,
     cac: vendas > 0 ? investimento / vendas : 0,
     roi: investimento > 0 ? (receita - investimento) / investimento : 0,
