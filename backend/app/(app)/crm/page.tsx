@@ -183,14 +183,14 @@ export default function CrmPage() {
       .then((d) => setTeam((d.team ?? []).filter((t: TeamMember) => t.role !== "admin")));
   }, []);
 
-  async function loadDeals() {
-    setLoading(true);
+  async function loadDeals(showSpinner = true) {
+    if (showSpinner) setLoading(true);
     const params = new URLSearchParams({ pipeline, status: statusFilter });
     if (ownerFilter !== "all") params.set("assigned_to", ownerFilter);
     const res = await fetch(`/api/deals?${params}`);
     const data = await res.json();
     setDeals(data.deals ?? []);
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   }
 
   useEffect(() => {
@@ -222,12 +222,15 @@ export default function CrmPage() {
   }
 
   async function moveToStage(dealId: string, stage: number) {
+    // Move o card na hora (otimista) — sem esperar a rede nem piscar o
+    // "Carregando…" da tela toda pra uma troca de etapa.
+    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage } : d)));
     await fetch(`/api/deals/${dealId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage }),
     });
-    loadDeals();
+    loadDeals(false);
   }
 
   function moveStage(deal: Deal, delta: number) {
