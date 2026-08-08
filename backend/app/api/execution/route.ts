@@ -13,17 +13,27 @@ import {
 /** Relatório de Execução (admin only): tempo de resposta ao lead,
  * tarefas vencidas e negociações paradas, consolidado e por SDR/Closer —
  * a versão "de sistema" de saber quem está enrolando, sem monitorar
- * pausa nenhuma do colaborador. */
-export async function GET() {
+ * pausa nenhuma do colaborador. Aceita `?from=&to=` (YYYY-MM-DD) pra
+ * filtrar pelas negociações criadas no período — mesmo padrão de
+ * "Período" usado no CRM e no Dashboard. */
+export async function GET(request: Request) {
   const { supabase, profile } = await getCurrentProfile();
   const forbidden = requireAdmin(profile?.role);
   if (forbidden) return forbidden;
 
+  const { searchParams } = new URL(request.url);
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  let dealsQuery = supabase
+    .from("deals")
+    .select("id,person_name,company_name,assigned_to,created_at,first_contacted_at,stage,stage_changed_at,lost");
+  if (from) dealsQuery = dealsQuery.gte("created_at", from);
+  if (to) dealsQuery = dealsQuery.lte("created_at", `${to}T23:59:59.999`);
+
   const [{ data: deals, error: dealsError }, { data: tasks, error: tasksError }, { data: team, error: teamError }] =
     await Promise.all([
-      supabase
-        .from("deals")
-        .select("id,person_name,company_name,assigned_to,created_at,first_contacted_at,stage,stage_changed_at,lost"),
+      dealsQuery,
       supabase.from("deal_tasks").select("id,deal_id,title,assigned_to,due_date,done"),
       supabase.from("profiles").select("id,name,initials,color,role").in("role", ["sdr", "closer"]).eq("active", true),
     ]);
@@ -33,9 +43,11 @@ export async function GET() {
 
   const dealsList = deals ?? [];
   const dealsById = new Map(dealsList.map((d) => [d.id, d]));
+  // Só tarefas de negociações que caíram no período filtrado.
+  const tasksInPeriod = (tasks ?? []).filter((t) => dealsById.has(t.deal_id));
 
   const geral = computeResponseTime(dealsList);
-  const overdueTasks = computeOverdueTasks(tasks ?? [], dealsById);
+  const overdueTasks = computeOverdueTasks(tasksInPeriod, dealsById);
   const stalledDeals = computeStalledDeals(dealsList);
 
   const ranking = (team ?? []).map((member) => {

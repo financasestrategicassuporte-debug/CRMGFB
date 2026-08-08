@@ -36,6 +36,35 @@ function fmtMinutos(min: number) {
   return `${h}h${m > 0 ? ` ${m}min` : ""}`;
 }
 
+function fmtDateShort(isoDate: string) {
+  const [y, m, d] = isoDate.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+function toISODate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Mesmos atalhos de "Período" do CRM e do Dashboard — Hoje/Ontem/7
+ * dias/14 dias/30 dias/Mês passado, além do intervalo manual. */
+function datePresets(): { label: string; from: string; to: string }[] {
+  const today = new Date();
+  const daysAgo = (n: number) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - n);
+    return d;
+  };
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  return [
+    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
+    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
+    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
+    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
+  ];
+}
+
 export default function ExecucaoPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -43,9 +72,16 @@ export default function ExecucaoPage() {
   const [overdueTasks, setOverdueTasks] = useState<OverdueTask[]>([]);
   const [stalledDeals, setStalledDeals] = useState<StalledDeal[]>([]);
   const [ranking, setRanking] = useState<RankingRow[]>([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDateMenu, setShowDateMenu] = useState(false);
 
   useEffect(() => {
-    fetch("/api/execution")
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
+    fetch(`/api/execution?${params}`)
       .then((r) => r.json())
       .then((d) => {
         setGeral(d.geral ?? { avgMinutos: 0, respondidos: 0, semContato: 0 });
@@ -54,7 +90,7 @@ export default function ExecucaoPage() {
         setRanking(d.ranking ?? []);
         setLoading(false);
       });
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const totalPendencias = overdueTasks.length + stalledDeals.length;
 
@@ -67,6 +103,108 @@ export default function ExecucaoPage() {
         role="admin"
       />
       <div style={{ padding: 32 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+          <div style={{ position: "relative" }}>
+            {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+            <button
+              onClick={() => setShowDateMenu((v) => !v)}
+              style={{
+                position: "relative",
+                zIndex: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "#fff",
+                color: "var(--text)",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>calendar_month</span>
+              {dateFrom || dateTo ? `${dateFrom ? fmtDateShort(dateFrom) : "…"} – ${dateTo ? fmtDateShort(dateTo) : "hoje"}` : "Período"}
+              <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+            </button>
+            {showDateMenu && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 4px)",
+                  background: "#fff",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  zIndex: 20,
+                  minWidth: 230,
+                  padding: 12,
+                }}
+              >
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
+                  Filtrar por data de criação
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                  {datePresets().map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        setDateFrom(p.from);
+                        setDateTo(p.to);
+                        setShowDateMenu(false);
+                      }}
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 999,
+                        background: dateFrom === p.from && dateTo === p.to ? "var(--status-ok-bg)" : "#fff",
+                        color: dateFrom === p.from && dateTo === p.to ? "var(--accent-darker)" : "var(--text)",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "4px 9px",
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 6, textTransform: "uppercase" }}>
+                  Personalizado
+                </div>
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
+                />
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Até</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 10 }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => {
+                      setDateFrom("");
+                      setDateTo("");
+                    }}
+                    style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: "6px 0", fontSize: 12 }}
+                  >
+                    Ver tudo
+                  </button>
+                  <button onClick={() => setShowDateMenu(false)} className="btn-primary" style={{ flex: 1, padding: "6px 0", fontSize: 12 }}>
+                    Aplicar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {loading ? (
           <p>Carregando…</p>
         ) : (
