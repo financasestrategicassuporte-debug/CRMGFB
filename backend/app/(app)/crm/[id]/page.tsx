@@ -125,6 +125,17 @@ function taskStatusBadge(t: Task) {
   );
 }
 
+/** Atrasada e "pra hoje" primeiro — sem due_date vai pro final, já que
+ * não tem urgência definida pra comparar. */
+function sortByUrgency(tasks: Task[]) {
+  return [...tasks].sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+  });
+}
+
 const TASK_TYPE_ICON: Record<string, string> = {
   tarefa: "task_alt",
   ligacao: "call",
@@ -534,37 +545,41 @@ export default function DealDetailPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Próximas tarefas</h2>
+                <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+                  Próximas tarefas
+                  {tasks.filter((t) => !t.done).length > 0 && (
+                    <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--text-faint)" }}>({tasks.filter((t) => !t.done).length})</span>
+                  )}
+                </h2>
                 <button onClick={openCreateTask} className="btn-primary" style={{ padding: "6px 12px", fontSize: 12 }}>
                   + Criar tarefa
                 </button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                {tasks.filter((t) => !t.done).map((t) => (
-                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", borderRadius: 10, padding: 10, gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                      <span className="msym" style={{ fontSize: 18, color: "var(--text-faint)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14, maxHeight: 280, overflowY: "auto" }}>
+                {sortByUrgency(tasks.filter((t) => !t.done)).map((t) => (
+                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                      <span className="msym" style={{ fontSize: 16, color: "var(--text-faint)", flexShrink: 0 }}>
                         {TASK_TYPE_ICON[t.task_type] ?? "task_alt"}
                       </span>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{TASK_TYPE_LABEL[t.task_type] ?? t.task_type}</div>
-                        <div style={{ fontSize: 12.5, color: "#2563eb", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
-                        {t.assignee && <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{t.assignee.name}</div>}
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: "#2563eb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>
+                          {TASK_TYPE_LABEL[t.task_type] ?? t.task_type}
+                          {t.assignee && ` · ${t.assignee.name}`}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
                       <div style={{ textAlign: "right" }}>
                         {taskStatusBadge(t)}
-                        {t.due_date && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{fmtDateTime(t.due_date)}</div>}
+                        {t.due_date && <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 2 }}>{fmtDateTime(t.due_date)}</div>}
                       </div>
-                      <button onClick={() => openEditTask(t)} title="Editar" style={iconBtnStyle}>
-                        <span className="msym" style={{ fontSize: 16 }}>edit</span>
+                      <button onClick={() => openEditTask(t)} title="Editar / Reagendar" style={{ ...iconBtnStyle, width: 26, height: 26 }}>
+                        <span className="msym" style={{ fontSize: 14 }}>edit</span>
                       </button>
-                      <button onClick={() => openEditTask(t)} title="Reagendar" style={iconBtnStyle}>
-                        <span className="msym" style={{ fontSize: 16 }}>schedule</span>
-                      </button>
-                      <button onClick={() => toggleTask(t)} title="Marcar como concluída" style={{ ...iconBtnStyle, background: "#dbeafe", color: "#1d4ed8" }}>
-                        <span className="msym" style={{ fontSize: 16 }}>check</span>
+                      <button onClick={() => toggleTask(t)} title="Marcar como concluída" style={{ ...iconBtnStyle, width: 26, height: 26, background: "#dbeafe", color: "#1d4ed8" }}>
+                        <span className="msym" style={{ fontSize: 14 }}>check</span>
                       </button>
                     </div>
                   </div>
