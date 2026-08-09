@@ -380,11 +380,20 @@ export default function DealDetailPage() {
   }
 
   async function toggleTask(task: Task) {
+    const done = !task.done;
     await fetch(`/api/deals/${id}/tasks/${task.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: !task.done }),
+      body: JSON.stringify({ done }),
     });
+    if (done) {
+      const descricao = task.description ? `\n${task.description}` : "";
+      await fetch(`/api/deals/${id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: `✅ Atividade concluída: ${task.title}${descricao}` }),
+      });
+    }
     load();
   }
 

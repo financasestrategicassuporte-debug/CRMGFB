@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentProfile, requireAdmin } from "@/lib/auth";
 import { parseBody, dbError } from "@/lib/api";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 
 const updateSchema = z.object({
   strategy: z.enum(["round_robin", "balanceamento", "peso", "prioridade", "manual"]).optional(),
@@ -39,5 +41,24 @@ export async function PATCH(request: Request) {
     .select()
     .single();
   if (error) return dbError(error);
-  return NextResponse.json({ settings: data });
+
+  // Ligou o modo automático agora: varre o backlog de leads ainda não
+  // convertidos e distribui na hora, não só os que chegarem depois —
+  // senão o toggle fica sem efeito visível até o próximo lead novo.
+  let backlogDistribuido = 0;
+  if (parsed.data.auto_enabled === true && !data.paused) {
+    const admin = createAdminClient();
+    const { data: pendentes } = await admin.from("leads").select("id").is("converted_deal_id", null);
+    const pendenteIds = (pendentes ?? []).map((l) => l.id);
+    if (pendenteIds.length > 0) {
+      try {
+        await autoDistributeNewLeads(admin, pendenteIds);
+        backlogDistribuido = pendenteIds.length;
+      } catch {
+        // não deixa uma falha na distribuição derrubar a atualização das configurações
+      }
+    }
+  }
+
+  return NextResponse.json({ settings: data, backlogDistribuido });
 }
