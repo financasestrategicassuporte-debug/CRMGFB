@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
-import { toISODate } from "@/lib/dates";
+import { datePresets } from "@/lib/dates";
 
 type Lead = {
   id: string;
@@ -38,24 +38,6 @@ function fmtDate(iso: string) {
 function fmtDateShort(isoDate: string) {
   const [y, m, d] = isoDate.split("-");
   return `${d}/${m}/${y.slice(2)}`;
-}
-
-function datePresets(): { label: string; from: string; to: string }[] {
-  const today = new Date();
-  const daysAgo = (n: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - n);
-    return d;
-  };
-  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-  return [
-    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
-    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
-    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
-    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
-  ];
 }
 
 const SOURCE_LABEL: Record<string, string> = {

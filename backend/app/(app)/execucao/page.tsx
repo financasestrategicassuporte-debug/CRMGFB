@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
-import { toISODate } from "@/lib/dates";
+import { datePresets } from "@/lib/dates";
 
 const STAGES = [
   "Sem Contato / Leads",
@@ -40,26 +40,6 @@ function fmtMinutos(min: number) {
 function fmtDateShort(isoDate: string) {
   const [y, m, d] = isoDate.split("-");
   return `${d}/${m}/${y.slice(2)}`;
-}
-
-/** Mesmos atalhos de "Período" do CRM e do Dashboard — Hoje/Ontem/7
- * dias/14 dias/30 dias/Mês passado, além do intervalo manual. */
-function datePresets(): { label: string; from: string; to: string }[] {
-  const today = new Date();
-  const daysAgo = (n: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - n);
-    return d;
-  };
-  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-  return [
-    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
-    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
-    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
-    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
-  ];
 }
 
 export default function ExecucaoPage() {

@@ -182,6 +182,7 @@ export default function DealDetailPage() {
   const [showWonCelebration, setShowWonCelebration] = useState(false);
   const [celebration, setCelebration] = useState<{ phrase: string; saleNumber: number; monthRevenue: number; clientName: string } | null>(null);
   const [showSaleForm, setShowSaleForm] = useState(false);
+  const [tasksExpanded, setTasksExpanded] = useState(false);
   const [saleProductId, setSaleProductId] = useState("");
   const [saleValor, setSaleValor] = useState("");
 
@@ -415,6 +416,7 @@ export default function DealDetailPage() {
     { label: "Decisão do lead registrada", done: deal.stage === 6 || deal.lost },
   ];
   const checklistDone = checklist.filter((c) => c.done).length;
+  const pendingTasks = sortByUrgency(tasks.filter((t) => !t.done));
 
   return (
     <div>
@@ -547,16 +549,16 @@ export default function DealDetailPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
                   Próximas tarefas
-                  {tasks.filter((t) => !t.done).length > 0 && (
-                    <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--text-faint)" }}>({tasks.filter((t) => !t.done).length})</span>
+                  {pendingTasks.length > 0 && (
+                    <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--text-faint)" }}>({pendingTasks.length})</span>
                   )}
                 </h2>
                 <button onClick={openCreateTask} className="btn-primary" style={{ padding: "6px 12px", fontSize: 12 }}>
                   + Criar tarefa
                 </button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14, maxHeight: 280, overflowY: "auto" }}>
-                {sortByUrgency(tasks.filter((t) => !t.done)).map((t) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: tasksExpanded ? 8 : 14, maxHeight: tasksExpanded ? 340 : undefined, overflowY: tasksExpanded ? "auto" : undefined }}>
+                {(tasksExpanded ? pendingTasks : pendingTasks.slice(0, 2)).map((t) => (
                   <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", gap: 8 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                       <span className="msym" style={{ fontSize: 16, color: "var(--text-faint)", flexShrink: 0 }}>
@@ -584,8 +586,17 @@ export default function DealDetailPage() {
                     </div>
                   </div>
                 ))}
-                {tasks.filter((t) => !t.done).length === 0 && <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Nenhuma tarefa pendente.</p>}
+                {pendingTasks.length === 0 && <p style={{ color: "var(--text-faint)", fontSize: 13 }}>Nenhuma tarefa pendente.</p>}
               </div>
+              {pendingTasks.length > 2 && (
+                <button
+                  onClick={() => setTasksExpanded((v) => !v)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, width: "100%", border: "none", background: "none", color: "var(--accent-darker)", fontSize: 12, fontWeight: 700, padding: "2px 0 12px", cursor: "pointer" }}
+                >
+                  {tasksExpanded ? "Mostrar menos" : `Ver todas (${pendingTasks.length})`}
+                  <span className="msym" style={{ fontSize: 16 }}>{tasksExpanded ? "expand_less" : "expand_more"}</span>
+                </button>
+              )}
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase" }}>Checklist da negociação</span>
@@ -705,16 +716,21 @@ export default function DealDetailPage() {
               {plans.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>Nenhum produto ativo cadastrado.</div>}
             </div>
             <label style={labelStyle}>Valor da venda</label>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              required
-              value={saleValor}
-              onChange={(e) => setSaleValor(e.target.value)}
-              placeholder="R$ 0,00"
-              style={{ ...inputStyle, marginBottom: 18 }}
-            />
+            <div style={{ position: "relative", marginBottom: 18 }}>
+              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, fontWeight: 600, color: "var(--text-faint)", pointerEvents: "none" }}>
+                R$
+              </span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={saleValor}
+                onChange={(e) => setSaleValor(e.target.value)}
+                placeholder="0,00"
+                style={{ ...inputStyle, marginBottom: 0, paddingLeft: 36 }}
+              />
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button type="button" onClick={() => setShowSaleForm(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>
                 Cancelar

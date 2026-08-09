@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
 import { useCall } from "../call/call-context";
-import { toISODate } from "@/lib/dates";
+import { datePresets } from "@/lib/dates";
 
 type Deal = {
   id: string;
@@ -80,26 +80,6 @@ function fmtDateShort(isoDate: string) {
 
 /** Atalhos do filtro "Período": além do intervalo manual (personalizado
  * via os campos De/Até), oferece os recortes mais usados no dia a dia. */
-function datePresets(): { label: string; from: string; to: string }[] {
-  const today = new Date();
-  const daysAgo = (n: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - n);
-    return d;
-  };
-  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-  return [
-    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
-    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
-    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
-    { label: "14 dias", from: toISODate(daysAgo(13)), to: toISODate(today) },
-    { label: "30 dias", from: toISODate(daysAgo(29)), to: toISODate(today) },
-    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
-  ];
-}
-
 /** Tarefa aberta mais próxima do vencimento — prioriza a lista real de
  * tarefas (deal_tasks); se o deal ainda não tem nenhuma, cai pro campo
  * legado (task_desc/task_type/task_date) que os dados de exemplo usam. */
@@ -156,7 +136,7 @@ export default function CrmPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [newDeal, setNewDeal] = useState({ company_name: "", person_name: "", phone: "", value: "" });
+  const [newDeal, setNewDeal] = useState({ person_name: "", company_name: "", phone: "", note: "" });
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
@@ -201,7 +181,7 @@ export default function CrmPage() {
 
   async function createDeal(e: React.FormEvent) {
     e.preventDefault();
-    await fetch("/api/deals", {
+    const res = await fetch("/api/deals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -209,10 +189,17 @@ export default function CrmPage() {
         company_name: newDeal.company_name || undefined,
         phone: newDeal.phone || undefined,
         pipeline,
-        value: newDeal.value ? Number(newDeal.value) : undefined,
       }),
     });
-    setNewDeal({ company_name: "", person_name: "", phone: "", value: "" });
+    const data = await res.json().catch(() => ({}));
+    if (data.deal?.id && newDeal.note.trim()) {
+      await fetch(`/api/deals/${data.deal.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: newDeal.note.trim() }),
+      });
+    }
+    setNewDeal({ person_name: "", company_name: "", phone: "", note: "" });
     setShowForm(false);
     loadDeals();
   }
@@ -1161,19 +1148,19 @@ export default function CrmPage() {
         <div style={overlayStyle}>
           <form onSubmit={createDeal} className="card" style={{ width: 360, background: "#fff" }}>
             <h2 style={{ marginTop: 0, fontSize: 16 }}>Nova negociação · Funil {pipeline === "quente" ? "Quente" : "Frio"}</h2>
-            <label style={labelStyle}>Nome da academia</label>
-            <input
-              value={newDeal.company_name}
-              onChange={(e) => setNewDeal({ ...newDeal, company_name: e.target.value })}
-              style={inputStyle}
-              placeholder="Ex: ULTRA ACADEMIA"
-            />
-            <label style={labelStyle}>Nome do contato</label>
+            <label style={labelStyle}>Nome do Lead</label>
             <input
               required
               value={newDeal.person_name}
               onChange={(e) => setNewDeal({ ...newDeal, person_name: e.target.value })}
               style={inputStyle}
+            />
+            <label style={labelStyle}>Nome da Academia</label>
+            <input
+              value={newDeal.company_name}
+              onChange={(e) => setNewDeal({ ...newDeal, company_name: e.target.value })}
+              style={inputStyle}
+              placeholder="Ex: ULTRA ACADEMIA"
             />
             <label style={labelStyle}>Telefone</label>
             <input
@@ -1181,12 +1168,13 @@ export default function CrmPage() {
               onChange={(e) => setNewDeal({ ...newDeal, phone: e.target.value })}
               style={inputStyle}
             />
-            <label style={labelStyle}>Valor estimado</label>
-            <input
-              type="number"
-              value={newDeal.value}
-              onChange={(e) => setNewDeal({ ...newDeal, value: e.target.value })}
-              style={{ ...inputStyle, marginBottom: 18 }}
+            <label style={labelStyle}>Observação</label>
+            <textarea
+              value={newDeal.note}
+              onChange={(e) => setNewDeal({ ...newDeal, note: e.target.value })}
+              placeholder="Opcional — vira uma anotação na negociação"
+              rows={3}
+              style={{ ...inputStyle, marginBottom: 18, resize: "vertical" }}
             />
             <div style={{ display: "flex", gap: 8 }}>
               <button type="button" onClick={() => setShowForm(false)} style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 10, background: "#fff", padding: 11 }}>

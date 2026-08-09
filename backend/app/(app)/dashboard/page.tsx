@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banner } from "../banner";
-import { toISODate } from "@/lib/dates";
+import { datePresets } from "@/lib/dates";
 
 /** Data de corte: a partir daqui os números do dashboard passam a
  * refletir atividade real (leads das planilhas de verdade entrando,
@@ -26,29 +26,6 @@ function fmtPct(v: number) {
 function fmtDateShort(isoDate: string) {
   const [y, m, d] = isoDate.split("-");
   return `${d}/${m}/${y.slice(2)}`;
-}
-
-
-/** Atalhos do filtro "Período": além do intervalo manual (personalizado
- * via os campos De/Até), oferece os recortes mais usados no dia a dia. */
-function datePresets(): { label: string; from: string; to: string }[] {
-  const today = new Date();
-  const daysAgo = (n: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - n);
-    return d;
-  };
-  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-  return [
-    { label: "Hoje", from: toISODate(today), to: toISODate(today) },
-    { label: "Ontem", from: toISODate(daysAgo(1)), to: toISODate(daysAgo(1)) },
-    { label: "7 dias", from: toISODate(daysAgo(6)), to: toISODate(today) },
-    { label: "14 dias", from: toISODate(daysAgo(13)), to: toISODate(today) },
-    { label: "30 dias", from: toISODate(daysAgo(29)), to: toISODate(today) },
-    { label: "Mês passado", from: toISODate(lastMonthStart), to: toISODate(lastMonthEnd) },
-  ];
 }
 
 const STAGE_BAR_COLORS = ["#94a3b8", "#3b82f6", "#f59e0b", "#a855f7", "#22c55e"];
