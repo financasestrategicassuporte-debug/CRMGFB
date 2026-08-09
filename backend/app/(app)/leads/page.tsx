@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
+import { toISODate } from "@/lib/dates";
 
 type Lead = {
   id: string;
@@ -37,10 +38,6 @@ function fmtDate(iso: string) {
 function fmtDateShort(isoDate: string) {
   const [y, m, d] = isoDate.split("-");
   return `${d}/${m}/${y.slice(2)}`;
-}
-
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
 }
 
 function datePresets(): { label: string; from: string; to: string }[] {

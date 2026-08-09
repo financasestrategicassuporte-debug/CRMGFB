@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banner } from "../banner";
+import { toISODate } from "@/lib/dates";
 
 /** Data de corte: a partir daqui os números do dashboard passam a
  * refletir atividade real (leads das planilhas de verdade entrando,
@@ -27,9 +28,6 @@ function fmtDateShort(isoDate: string) {
   return `${d}/${m}/${y.slice(2)}`;
 }
 
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
 
 /** Atalhos do filtro "Período": além do intervalo manual (personalizado
  * via os campos De/Até), oferece os recortes mais usados no dia a dia. */

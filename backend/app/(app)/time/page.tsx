@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banner } from "../banner";
+import { toISODate } from "@/lib/dates";
 
 type Member = {
   id: string;
@@ -25,7 +26,7 @@ const ROLE_LABEL: Record<string, string> = { admin: "Admin", sdr: "SDR", closer:
 const BREAK_TIPO_LABEL: Record<string, string> = { banheiro: "Banheiro", almoco: "Almoço", outro: "Outro" };
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return toISODate(new Date());
 }
 
 function fmtHora(iso: string | null) {

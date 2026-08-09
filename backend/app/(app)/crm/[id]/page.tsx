@@ -5,8 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Banner } from "../../banner";
 import { QualifyWizard } from "./qualify-wizard";
 import { useCall } from "../../call/call-context";
-import { LOST_REASON_REVOKES_SDR_COMMISSION } from "@/lib/commissionRules";
-import { MEETING_HAPPENED_LOST_REASON } from "@/lib/funnels";
+import { LOST_REASONS } from "@/lib/lostReasons";
 
 type Deal = {
   id: string;
@@ -75,16 +74,6 @@ const EDIT_FIELDS: { key: keyof Deal; label: string; type?: string }[] = [
 const HISTORY_TABS = ["Histórico", "Tarefas", "E-mail", "Questionários", "Produtos", "Arquivos", "Propostas"];
 
 const STAGE_NEGOCIACAO = 5;
-
-const LOST_REASONS = [
-  "Lead desqualificado",
-  MEETING_HAPPENED_LOST_REASON,
-  "Fechou com a concorrência",
-  "Não consegui mais contato, pois sumiu",
-  "Lead duplicado",
-  "Não tem interesse",
-  LOST_REASON_REVOKES_SDR_COMMISSION,
-];
 
 const FIRST_SALE_PHRASE = "Parabéns pela venda, é só o começo!";
 

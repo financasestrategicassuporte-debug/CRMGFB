@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "../banner";
 import { useCall } from "../call/call-context";
+import { toISODate } from "@/lib/dates";
 
 type Deal = {
   id: string;
@@ -75,10 +76,6 @@ function fmtDate(iso: string | null) {
 function fmtDateShort(isoDate: string) {
   const [y, m, d] = isoDate.split("-");
   return `${d}/${m}/${y.slice(2)}`;
-}
-
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
 }
 
 /** Atalhos do filtro "Período": além do intervalo manual (personalizado
