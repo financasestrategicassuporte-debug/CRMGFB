@@ -63,26 +63,34 @@ export function renderTemplate(template: string, deal: TemplateDeal): string {
     .replaceAll("{{email}}", deal.email ?? "");
 }
 
-/** Executa, na hora, as regras com `delay_days = 0` da etapa que o deal
- * acabou de entrar — chamado direto do PATCH de estágio
- * (`app/api/deals/[id]/route.ts`), sem esperar o cron diário. As regras
- * com atraso (24h/48h/72h etc.) continuam passando só pelo cron — não
- * tem granularidade menor que 1x/dia no plano atual (ver comentário no
- * topo do arquivo), mas pra "imediata" isso não é aceitável: o SDR
- * precisa da tarefa na hora que o lead entra em contato. */
+/** Executa, na hora, as regras da etapa que o deal acabou de entrar —
+ * chamado direto do PATCH de estágio (`app/api/deals/[id]/route.ts`),
+ * sem esperar o cron diário. Pra regras que criam **tarefa**
+ * (action_type "task"), cria a sequência inteira de uma vez só (a de
+ * hoje com due_date agora, a de 24h/48h/72h já com o due_date futuro
+ * certo) — assim o SDR já vê a fila inteira de atividades programadas
+ * sem precisar esperar o cron do dia seguinte materializar uma de cada
+ * vez. E-mail/WhatsApp com atraso continuam esperando o cron disparar
+ * na data certa (não faz sentido mandar a mensagem adiantada só porque
+ * o deal entrou na etapa agora) — não tem granularidade menor que 1x/dia
+ * no plano atual da Vercel (ver comentário no topo do arquivo), mas pra
+ * a tarefa "imediata" isso não é aceitável: o SDR precisa dela na hora. */
 export async function runImmediateDealAutomations(admin: SupabaseClient<Database>, dealId: string, stage: number) {
   const { data: rules } = await admin
     .from("deal_automations")
     .select("*")
     .eq("active", true)
-    .eq("trigger_stage", stage)
-    .eq("delay_days", 0);
+    .eq("trigger_stage", stage);
   if (!rules || rules.length === 0) return;
 
   const { data: deal } = await admin.from("deals").select("*").eq("id", dealId).single();
   if (!deal) return;
 
   for (const rule of rules) {
+    // Mensagem com atraso: fica pro cron diário disparar na data certa,
+    // não faz sentido mandar já (o "imediato" é só pra tarefa/checklist).
+    if (rule.delay_days > 0 && rule.action_type !== "task") continue;
+
     const { data: already } = await admin
       .from("deal_automation_runs")
       .select("id")
@@ -118,13 +126,17 @@ export async function runImmediateDealAutomations(admin: SupabaseClient<Database
       }
     } else {
       const title = renderTemplate(rule.template_subject ?? rule.title, deal);
+      const dueDate =
+        rule.delay_days > 0
+          ? scheduledFireTime(deal.stage_changed_at, rule.delay_days, rule.skip_weekends, rule.run_time).toISOString()
+          : new Date().toISOString();
       await admin.from("deal_tasks").insert({
         deal_id: deal.id,
         title,
         description: rule.template_body ? renderTemplate(rule.template_body, deal) : null,
         assigned_to: deal.assigned_to,
         task_type: rule.task_type === "whatsapp" ? "whatsapp" : "ligacao",
-        due_date: new Date().toISOString(),
+        due_date: dueDate,
       });
     }
 

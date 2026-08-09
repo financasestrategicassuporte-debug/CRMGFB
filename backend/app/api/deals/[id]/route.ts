@@ -46,9 +46,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
   }
 
-  // Regras "imediatas" (delay_days = 0) não podem esperar o cron diário —
-  // o SDR precisa da tarefa (ligar/whatsapp) assim que o negócio entra na
-  // etapa. As com atraso continuam só pelo cron.
+  // Tarefas não podem esperar o cron diário: a de hoje e as de 24h/48h/72h
+  // já são criadas todas juntas assim que o negócio entra na etapa, cada
+  // uma com o due_date certo — o SDR já vê a fila inteira. E-mail/WhatsApp
+  // com atraso continuam esperando o cron disparar na data certa.
   if (payload.stage !== undefined) {
     const admin = createAdminClient();
     try {
