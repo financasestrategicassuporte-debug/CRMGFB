@@ -14,6 +14,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   return NextResponse.json({ tasks: data });
 }
 
+const STAGE_AGENDADO = 2;
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const { supabase } = await getCurrentProfile();
   const parsed = await parseBody(request, dealTaskSchema);
@@ -25,5 +27,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .select("*, assignee:profiles(id,name,initials)")
     .single();
   if (error) return dbError(error);
+
+  // Criar uma tarefa de Reunião é mais uma forma de marcar "Reunião
+  // Agendada" (além de mover o card no kanban / qualificar) — usa o
+  // mesmo campo `stage` como fonte única da verdade, só avança se ainda
+  // não tiver chegado lá, nunca reduz nem duplica o indicador.
+  if (parsed.data.task_type === "reuniao") {
+    const { data: deal } = await supabase.from("deals").select("stage").eq("id", params.id).single();
+    if (deal && deal.stage < STAGE_AGENDADO) {
+      await supabase.from("deals").update({ stage: STAGE_AGENDADO }).eq("id", params.id);
+    }
+  }
+
   return NextResponse.json({ task: data }, { status: 201 });
 }

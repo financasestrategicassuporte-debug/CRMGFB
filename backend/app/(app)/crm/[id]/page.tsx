@@ -6,6 +6,7 @@ import { Banner } from "../../banner";
 import { QualifyWizard } from "./qualify-wizard";
 import { useCall } from "../../call/call-context";
 import { LOST_REASON_REVOKES_SDR_COMMISSION } from "@/lib/commissionRules";
+import { MEETING_HAPPENED_LOST_REASON } from "@/lib/funnels";
 
 type Deal = {
   id: string;
@@ -77,7 +78,7 @@ const STAGE_NEGOCIACAO = 5;
 
 const LOST_REASONS = [
   "Lead desqualificado",
-  "Optou por não fechar o projeto",
+  MEETING_HAPPENED_LOST_REASON,
   "Fechou com a concorrência",
   "Não consegui mais contato, pois sumiu",
   "Lead duplicado",
@@ -184,15 +185,15 @@ export default function DealDetailPage() {
   const [saleProductId, setSaleProductId] = useState("");
   const [saleValor, setSaleValor] = useState("");
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     const [dealRes, tasksRes] = await Promise.all([fetch(`/api/deals/${id}`), fetch(`/api/deals/${id}/tasks`)]);
     const dealData = await dealRes.json();
     const tasksData = await tasksRes.json();
     setDeal(dealData.deal);
     setNotes([...(dealData.deal?.notes ?? [])].sort((a: Note, b: Note) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
     setTasks(tasksData.tasks ?? []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }
 
   useEffect(() => {
@@ -229,7 +230,7 @@ export default function DealDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage }),
     });
-    load();
+    load(true);
   }
 
   function startEdit() {
@@ -252,7 +253,7 @@ export default function DealDetailPage() {
       body: JSON.stringify(payload),
     });
     setEditing(false);
-    load();
+    load(true);
   }
 
   async function addNote() {
@@ -263,7 +264,7 @@ export default function DealDetailPage() {
       body: JSON.stringify({ body: noteText }),
     });
     setNoteText("");
-    load();
+    load(true);
   }
 
   async function confirmMarkLost(e: React.FormEvent) {
@@ -289,7 +290,7 @@ export default function DealDetailPage() {
     });
     setBusy(false);
     setShowWonCelebration(false);
-    load();
+    load(true);
   }
 
   async function markWon() {
@@ -310,7 +311,7 @@ export default function DealDetailPage() {
     });
     setShowWonCelebration(true);
     playSaleSound();
-    load();
+    load(true);
   }
 
   function openSaleForm() {
@@ -358,7 +359,7 @@ export default function DealDetailPage() {
     setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
     setEditingTaskId(null);
     setShowTaskForm(false);
-    load();
+    load(true);
   }
 
   function openEditTask(t: Task) {
@@ -394,7 +395,7 @@ export default function DealDetailPage() {
         body: JSON.stringify({ body: `✅ Atividade concluída: ${task.title}${descricao}` }),
       });
     }
-    load();
+    load(true);
   }
 
   if (loading || !deal) {
