@@ -42,7 +42,7 @@ type Task = {
   due_date: string | null;
   assignee?: { id: string; name: string } | null;
 };
-type TeamMember = { id: string; name: string };
+type TeamMember = { id: string; name: string; role?: string };
 type Plan = { id: string; name: string; active: boolean };
 
 const STAGES = [
@@ -175,6 +175,7 @@ export default function DealDetailPage() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskForm, setTaskForm] = useState({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
+  const [taskFormError, setTaskFormError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showLostForm, setShowLostForm] = useState(false);
@@ -224,6 +225,20 @@ export default function DealDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, deal, searchParams]);
+
+  // Rascunho de tarefa nova salvo local — se a aba fechar sozinha, a
+  // internet cair no meio do "Criar tarefa" ou o SDR sair sem querer, o
+  // que foi digitado não se perde: reabrindo "Criar tarefa" pra essa
+  // mesma negociação, os campos voltam preenchidos. Edição de tarefa
+  // existente não usa isso (já é dado real salvo no banco).
+  useEffect(() => {
+    if (!showTaskForm || editingTaskId) return;
+    try {
+      window.localStorage.setItem(`gymplus_task_draft_${id}`, JSON.stringify(taskForm));
+    } catch {
+      // localStorage indisponível (modo privado etc.) — sem rascunho, sem quebrar o form
+    }
+  }, [taskForm, showTaskForm, editingTaskId, id]);
 
   async function moveToStage(stage: number) {
     await fetch(`/api/deals/${id}`, {
@@ -337,6 +352,10 @@ export default function DealDetailPage() {
 
   async function createTask(e: React.FormEvent) {
     e.preventDefault();
+    if (taskForm.task_type === "reuniao" && !taskForm.assigned_to) {
+      setTaskFormError("Selecione o closer responsável pela reunião antes de salvar.");
+      return;
+    }
     const payload = {
       title: taskForm.title,
       description: taskForm.description || undefined,
@@ -344,27 +363,51 @@ export default function DealDetailPage() {
       task_type: taskForm.task_type,
       due_date: taskForm.due_date || undefined,
     };
-    if (editingTaskId) {
-      await fetch(`/api/deals/${id}/tasks/${editingTaskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await fetch(`/api/deals/${id}/tasks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const res = editingTaskId
+      ? await fetch(`/api/deals/${id}/tasks/${editingTaskId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      : await fetch(`/api/deals/${id}/tasks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+    if (!res.ok) {
+      // Não fecha nem limpa o form — os dados digitados continuam ali
+      // (e o rascunho continua salvo local) pro SDR tentar de novo.
+      setTaskFormError("Não foi possível salvar a tarefa agora. Seus dados continuam aqui — tente de novo.");
+      return;
+    }
+    try {
+      window.localStorage.removeItem(`gymplus_task_draft_${id}`);
+    } catch {
+      // localStorage indisponível — sem problema, já salvou no banco
     }
     setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
+    setTaskFormError(null);
     setEditingTaskId(null);
     setShowTaskForm(false);
     load(true);
   }
 
+  function handleCloseTaskForm() {
+    // Reunião sem closer definido não pode ser fechada sem querer — o
+    // agendamento fica sem dono. Qualquer outro tipo de tarefa fecha
+    // normal (o rascunho continua salvo local se quiser retomar).
+    if (taskForm.task_type === "reuniao" && !taskForm.assigned_to) {
+      setTaskFormError("Selecione o closer responsável pela reunião antes de sair.");
+      return;
+    }
+    setShowTaskForm(false);
+    setEditingTaskId(null);
+    setTaskFormError(null);
+  }
+
   function openEditTask(t: Task) {
     setEditingTaskId(t.id);
+    setTaskFormError(null);
     setTaskForm({
       title: t.title,
       description: t.description ?? "",
@@ -377,7 +420,15 @@ export default function DealDetailPage() {
 
   function openCreateTask() {
     setEditingTaskId(null);
-    setTaskForm({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
+    setTaskFormError(null);
+    let draft = { title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" };
+    try {
+      const saved = window.localStorage.getItem(`gymplus_task_draft_${id}`);
+      if (saved) draft = { ...draft, ...JSON.parse(saved) };
+    } catch {
+      // sem rascunho recuperável — segue com o form em branco
+    }
+    setTaskForm(draft);
     setShowTaskForm(true);
   }
 
@@ -845,7 +896,7 @@ export default function DealDetailPage() {
           <form onSubmit={createTask} className="card" style={{ width: 380, background: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <h2 style={{ marginTop: 0, fontSize: 16 }}>{editingTaskId ? "Editar Tarefa" : "Criar Tarefa"}</h2>
-              <button type="button" onClick={() => { setShowTaskForm(false); setEditingTaskId(null); }} style={{ border: "none", background: "none" }}>✕</button>
+              <button type="button" onClick={handleCloseTaskForm} style={{ border: "none", background: "none" }}>✕</button>
             </div>
             <label style={labelStyle}>Negociação</label>
             <input value={deal.person_name} disabled style={{ ...inputStyle, background: "var(--surface-muted)" }} />
@@ -853,15 +904,31 @@ export default function DealDetailPage() {
             <input required value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} style={inputStyle} />
             <label style={labelStyle}>Descrição da tarefa</label>
             <textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} style={{ ...inputStyle, minHeight: 60 }} />
-            <label style={labelStyle}>Responsável</label>
-            <select value={taskForm.assigned_to} onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })} style={inputStyle}>
-              <option value="">Selecione…</option>
-              {team.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
+            {taskForm.task_type !== "reuniao" && (
+              <>
+                <label style={labelStyle}>Responsável</label>
+                <select value={taskForm.assigned_to} onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })} style={inputStyle}>
+                  <option value="">Selecione…</option>
+                  {team.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </>
+            )}
             <label style={labelStyle}>Tipo de tarefa</label>
-            <select value={taskForm.task_type} onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })} style={inputStyle}>
+            <select
+              value={taskForm.task_type}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                // Só zera o responsável ao entrar/sair de "Reunião" — o
+                // campo de closer usa uma lista filtrada (só role=closer),
+                // então um id de SDR/admin ficaria inválido ali sem isso.
+                const clearsAssignee = nextType === "reuniao" || taskForm.task_type === "reuniao";
+                setTaskForm({ ...taskForm, task_type: nextType, assigned_to: clearsAssignee ? "" : taskForm.assigned_to });
+                setTaskFormError(null);
+              }}
+              style={inputStyle}
+            >
               <option value="tarefa">Tarefa</option>
               <option value="ligacao">Ligação</option>
               <option value="reuniao">Reunião</option>
@@ -870,11 +937,36 @@ export default function DealDetailPage() {
             </select>
             <label style={labelStyle}>Data/hora de vencimento</label>
             <input
+              required={taskForm.task_type === "reuniao"}
               type="datetime-local"
               value={taskForm.due_date}
               onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
-              style={{ ...inputStyle, marginBottom: 18 }}
+              style={{ ...inputStyle, marginBottom: taskForm.task_type === "reuniao" ? 6 : 18 }}
             />
+            {taskForm.task_type === "reuniao" && (
+              <>
+                <label style={labelStyle}>Closer responsável pela reunião</label>
+                <select
+                  required
+                  value={taskForm.assigned_to}
+                  onChange={(e) => { setTaskForm({ ...taskForm, assigned_to: e.target.value }); setTaskFormError(null); }}
+                  style={{ ...inputStyle, marginBottom: 18, borderColor: taskFormError ? "var(--status-late-fg)" : "var(--border)" }}
+                >
+                  <option value="">Selecione um closer…</option>
+                  {team.filter((t) => t.role === "closer").map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                {team.filter((t) => t.role === "closer").length === 0 && (
+                  <p style={{ fontSize: 11.5, color: "var(--status-late-fg)", marginTop: -12, marginBottom: 14 }}>
+                    Nenhum closer cadastrado em Time ainda.
+                  </p>
+                )}
+              </>
+            )}
+            {taskFormError && (
+              <p style={{ fontSize: 12.5, color: "var(--status-late-fg)", marginTop: -8, marginBottom: 14 }}>{taskFormError}</p>
+            )}
             <button type="submit" className="btn-primary" style={{ width: "100%" }}>{editingTaskId ? "Salvar tarefa" : "Criar tarefa"}</button>
           </form>
         </div>
