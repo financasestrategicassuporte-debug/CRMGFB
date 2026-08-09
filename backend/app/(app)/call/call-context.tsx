@@ -39,6 +39,7 @@ type CallContextValue = CallState & {
   setResult: (result: CallResult) => void;
   endCall: (resultOverride?: CallResult) => void;
   skipQueueItem: () => void;
+  advanceAndDial: () => void;
   cancelAutoAdvance: () => void;
   stopMassQueue: () => void;
   closeWidget: () => void;
@@ -184,9 +185,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setState({ ...initialState, open: true, phase: "ready", deal: dialable[0], massMode: true, queue: dialable, queueIndex: 0 });
   }, [stopAutoAdvance, stopRecognition, stopTimer]);
 
-  const dial = useCallback(() => {
-    const deal = stateRef.current.deal;
-    if (!deal) return;
+  // Toca o `tel:` e liga o timer/transcrição pro deal informado — extraído
+  // de `dial()` pra também poder ser chamado direto de `advanceAndDial()`
+  // (pula a tela "ready" e já disca o próximo da fila, sem esperar o SDR
+  // clicar "Ligar agora" de novo).
+  const startDialing = useCallback((deal: CallableDeal) => {
     const number = cleanPhone(deal.phone);
     if (number) {
       const a = document.createElement("a");
@@ -196,6 +199,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       a.click();
       setTimeout(() => a.remove(), 500);
     }
+    stopTimer();
+    timerRef.current = setInterval(() => {
+      setState((s) => (s.callStartedAt ? { ...s, elapsedSeconds: Math.floor((Date.now() - s.callStartedAt) / 1000) } : s));
+    }, 1000);
+    startRecognition();
+  }, [startRecognition, stopTimer]);
+
+  const dial = useCallback(() => {
+    const deal = stateRef.current.deal;
+    if (!deal) return;
     setState((s) => ({
       ...s,
       phase: "in-call",
@@ -206,12 +219,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       result: null,
       analysis: null,
     }));
-    stopTimer();
-    timerRef.current = setInterval(() => {
-      setState((s) => (s.callStartedAt ? { ...s, elapsedSeconds: Math.floor((Date.now() - s.callStartedAt) / 1000) } : s));
-    }, 1000);
-    startRecognition();
-  }, [startRecognition, stopTimer]);
+    startDialing(deal);
+  }, [startDialing]);
 
   const setResult = useCallback((result: CallResult) => {
     setState((s) => ({ ...s, result }));
@@ -312,6 +321,35 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     advanceQueue();
   }, [advanceQueue, stopAutoAdvance]);
 
+  // "Não atendeu" no modo massivo: em vez de parar na tela "ready"
+  // esperando o SDR clicar "Ligar agora" de novo, já disca o próximo da
+  // fila direto — mantém o ritmo da discagem em massa. `queue`/
+  // `queueIndex` não são tocados por `endCall` (só phase/analyzing), por
+  // isso ler de `stateRef.current` aqui, mesmo logo após chamar
+  // `endCall`, é seguro.
+  const advanceAndDial = useCallback(() => {
+    stopAutoAdvance();
+    const s = stateRef.current;
+    const nextIndex = s.queueIndex + 1;
+    if (!s.massMode || nextIndex >= s.queue.length) {
+      setState({ ...initialState, open: false });
+      return;
+    }
+    const nextDeal = s.queue[nextIndex];
+    setState({
+      ...initialState,
+      open: true,
+      phase: "in-call",
+      deal: nextDeal,
+      massMode: true,
+      queue: s.queue,
+      queueIndex: nextIndex,
+      callStartedAt: Date.now(),
+      elapsedSeconds: 0,
+    });
+    startDialing(nextDeal);
+  }, [startDialing, stopAutoAdvance]);
+
   const cancelAutoAdvance = useCallback(() => {
     stopAutoAdvance();
   }, [stopAutoAdvance]);
@@ -365,6 +403,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setResult,
     endCall,
     skipQueueItem,
+    advanceAndDial,
     cancelAutoAdvance,
     stopMassQueue,
     closeWidget,

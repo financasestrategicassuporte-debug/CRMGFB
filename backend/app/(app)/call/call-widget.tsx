@@ -65,10 +65,11 @@ export function CallWidget() {
       return;
     }
     if (value === "Não atendeu") {
-      // Sem conversa pra analisar — encerra e já disca a próxima, sem
-      // esperar o countdown de 8s do wrap-up normal.
+      // Sem conversa pra analisar — encerra e já disca o próximo direto
+      // (sem passar pela tela "ready"), sem esperar o countdown de 8s do
+      // wrap-up normal nem precisar clicar "Ligar agora" de novo.
       call.endCall("Não atendeu");
-      if (call.massMode) call.skipQueueItem();
+      if (call.massMode) call.advanceAndDial();
       return;
     }
     call.setResult(value);
