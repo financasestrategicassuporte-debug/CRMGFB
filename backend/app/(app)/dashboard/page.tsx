@@ -332,15 +332,9 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>RECEITA</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{fmtK(funnel.receita)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>LUCRO</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "var(--accent)" }}>{fmtK(economics.lucro)}</div>
-            </div>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>RECEITA</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{fmtK(funnel.receita)}</div>
           </div>
         </section>
 
