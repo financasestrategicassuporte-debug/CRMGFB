@@ -15,6 +15,13 @@ export const teamMemberUpdateSchema = teamMemberSchema
   .partial()
   .extend({ active: z.boolean().optional() });
 
+/** "Meu Perfil" — qualquer usuário logado pode alterar o próprio nome
+ * (RLS `profiles_self_update` já restringe a linha própria; role/email
+ * continuam só editáveis por admin via Time). */
+export const selfProfileUpdateSchema = z.object({
+  name: z.string().min(2),
+});
+
 export const clientSchema = z.object({
   name: z.string().min(2),
   plan_id: z.string().uuid().nullable().optional(),

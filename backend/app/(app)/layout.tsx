@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
 import { NavLink } from "./nav-link";
@@ -124,24 +125,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </nav>
 
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 14, fontSize: 13, display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: profile?.color ?? "var(--accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 12,
-              fontWeight: 700,
-              flexShrink: 0,
-            }}
-          >
-            {profile?.initials ?? profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
-          </div>
-          <div>
-            <div style={{ fontWeight: 700 }}>{profile?.name ?? user.email}</div>
+          <Link href="/perfil" title="Meu Perfil">
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                background: profile?.color ?? "var(--accent)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {profile?.initials ?? profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
+            </div>
+          </Link>
+          <div style={{ minWidth: 0 }}>
+            <Link href="/perfil" title="Meu Perfil" style={{ textDecoration: "none", color: "inherit" }}>
+              <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile?.name ?? user.email}</div>
+            </Link>
             <div style={{ color: "var(--text-faint)", textTransform: "capitalize", fontSize: 12 }}>{profile?.role}</div>
             <SairButton />
           </div>

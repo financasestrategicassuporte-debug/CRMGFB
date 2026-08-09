@@ -22,8 +22,13 @@ function fmtElapsed(startedAt: string) {
 /** Registro de pausa 100% voluntário, só pra folha de ponto — o
  * colaborador clica quando ele quiser, ninguém é obrigado a nada e
  * nenhuma outra função da plataforma trava por causa disso. Fica
- * disponível em toda a área logada, discreto, canto oposto ao widget
- * de ligação. */
+ * disponível em toda a área logada, discreto, canto inferior esquerdo
+ * do conteúdo (não da viewport inteira). `position: fixed` é relativo à
+ * viewport, não ao `<main>` — com `left: 20` ele ficava sobreposto ao
+ * cartão de usuário no rodapé da sidebar (240px de largura, que também
+ * mora no canto inferior esquerdo); `left: 260` pula pra fora da
+ * sidebar. Fica longe do widget de Ligação Massiva minimizado, que usa
+ * o canto inferior direito. */
 export function BreakWidget() {
   const [current, setCurrent] = useState<BreakLog | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,7 +68,7 @@ export function BreakWidget() {
   if (loading) return null;
 
   return (
-    <div style={{ position: "fixed", left: 20, bottom: 20, zIndex: 9998 }}>
+    <div style={{ position: "fixed", left: 260, bottom: 20, zIndex: 9998 }}>
       {current ? (
         <div
           style={{
