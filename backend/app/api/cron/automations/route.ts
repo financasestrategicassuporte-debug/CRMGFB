@@ -9,6 +9,11 @@ import { sendWhatsapp } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/email";
 import { syncMarketingSpend } from "@/lib/integrations/marketingSpend";
 
+// Varrer o backlog inteiro de leads (item 5 abaixo) pode levar mais que
+// os 10s padrão da function em dias com fila grande — 60s é o teto do
+// plano Hobby da Vercel.
+export const maxDuration = 60;
+
 /** Roda 1x/dia (ver vercel.json): (1) avalia as automações de playbook
  * ativas contra o estado atual dos clientes, evitando disparar duas
  * vezes no mesmo dia (checa `automation_runs` de hoje antes de agir) —
@@ -18,7 +23,10 @@ import { syncMarketingSpend } from "@/lib/integrations/marketingSpend";
  * planilhas (quente/frio) — o mesmo sync também roda toda vez que
  * alguém abre `/leads`; (4) sincroniza o investimento real em mídia do
  * dashboard de marketing pra `ad_spend` — mesmo sync também roda ao
- * abrir Dashboard/Dashboard de Produtos. */
+ * abrir Dashboard/Dashboard de Produtos; (5) varre todo o backlog de
+ * leads ainda não convertidos e distribui (se o modo automático estiver
+ * ligado) — não só os sincronizados nessa execução, pra nenhum lead
+ * ficar parado esperando o próximo toggle manual. */
 export async function GET(request: Request) {
   const forbidden = verifyCronSecret(request);
   if (forbidden) return forbidden;
@@ -81,14 +89,21 @@ export async function GET(request: Request) {
     syncMarketingSpend(admin),
   ]);
 
-  const novosLeadIds = [...leadsQuente.insertedIds, ...leadsFrio.insertedIds];
-  if (novosLeadIds.length > 0) {
-    try {
-      await autoDistributeNewLeads(admin, novosLeadIds);
-    } catch {
-      // não deixa a distribuição automática quebrar o cron
+  // Varre TODO o backlog de leads ainda não convertidos, não só os
+  // sincronizados agora — rede de segurança pro modo automático (ligado
+  // em /leads) nunca deixar lead parado esperando: se por qualquer
+  // motivo o toggle não pegou algum lote (settings mudou de mão, erro
+  // pontual etc.), o cron do dia seguinte já limpa sozinho.
+  let leadsDistribuidos = { converted: 0, distributed: 0 };
+  try {
+    const { data: pendentes } = await admin.from("leads").select("id").is("converted_deal_id", null);
+    const pendenteIds = (pendentes ?? []).map((l) => l.id);
+    if (pendenteIds.length > 0) {
+      leadsDistribuidos = await autoDistributeNewLeads(admin, pendenteIds);
     }
+  } catch {
+    // não deixa a distribuição automática quebrar o cron
   }
 
-  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio, spendResult });
+  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio, spendResult, leadsDistribuidos });
 }

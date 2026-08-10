@@ -24,31 +24,44 @@ export async function autoDistributeNewLeads(admin: SupabaseClient<Database>, le
   const { data: leads } = await admin.from("leads").select("*").in("id", leadIds).is("converted_deal_id", null);
   if (!leads || leads.length === 0) return { converted: 0, distributed: 0 };
 
+  // Converte em lotes concorrentes (não um por um, sequencial) — com
+  // backlog grande (centenas de leads parados) a versão sequencial
+  // passava fácil de 1 minuto e batia no timeout da function; em lotes
+  // de 25 em paralelo fica em segundos.
+  const CONVERT_BATCH_SIZE = 25;
   const quenteDealIds: string[] = [];
   const frioDealIds: string[] = [];
-  for (const lead of leads) {
-    const pipeline = lead.source?.includes("quente") ? "quente" : "frio";
-    const { data: deal, error } = await admin
-      .from("deals")
-      .insert({
-        pipeline,
-        person_name: lead.name,
-        phone: lead.phone,
-        email: lead.email,
-        source: lead.source,
-        campaign: lead.campaign,
-        adset: lead.adset,
-        ad: lead.ad,
-        students_count: lead.students_count,
-        revenue: lead.revenue,
-        pain_points: lead.pain_points,
-        stage: 0,
+  for (let i = 0; i < leads.length; i += CONVERT_BATCH_SIZE) {
+    const batch = leads.slice(i, i + CONVERT_BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (lead) => {
+        const pipeline = lead.source?.includes("quente") ? "quente" : "frio";
+        const { data: deal, error } = await admin
+          .from("deals")
+          .insert({
+            pipeline,
+            person_name: lead.name,
+            phone: lead.phone,
+            email: lead.email,
+            source: lead.source,
+            campaign: lead.campaign,
+            adset: lead.adset,
+            ad: lead.ad,
+            students_count: lead.students_count,
+            revenue: lead.revenue,
+            pain_points: lead.pain_points,
+            stage: 0,
+          })
+          .select()
+          .single();
+        if (error || !deal) return null;
+        await admin.from("leads").update({ converted_deal_id: deal.id }).eq("id", lead.id);
+        return { pipeline, dealId: deal.id as string };
       })
-      .select()
-      .single();
-    if (error || !deal) continue;
-    await admin.from("leads").update({ converted_deal_id: deal.id }).eq("id", lead.id);
-    (pipeline === "quente" ? quenteDealIds : frioDealIds).push(deal.id);
+    );
+    for (const r of results) {
+      if (r) (r.pipeline === "quente" ? quenteDealIds : frioDealIds).push(r.dealId);
+    }
   }
 
   const dealIds = [...quenteDealIds, ...frioDealIds];

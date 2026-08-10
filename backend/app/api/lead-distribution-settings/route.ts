@@ -5,6 +5,11 @@ import { parseBody, dbError } from "@/lib/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 
+// Ativar o modo automático varre o backlog inteiro de leads pendentes na
+// hora (ver PATCH abaixo) — com uma fila grande isso passa dos 10s
+// padrão da function; 60s é o teto do plano Hobby da Vercel.
+export const maxDuration = 60;
+
 const updateSchema = z.object({
   strategy: z.enum(["round_robin", "balanceamento", "peso", "prioridade", "manual"]).optional(),
   auto_enabled: z.boolean().optional(),
