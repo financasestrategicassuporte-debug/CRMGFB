@@ -315,7 +315,7 @@ export default function CrmPage() {
   function startMassCall() {
     const candidates = massCallCandidates();
     if (candidates.length === 0) return;
-    call.startMassQueue(candidates.map((d) => ({ id: d.id, person_name: d.person_name, company_name: d.company_name, phone: d.phone })));
+    call.startMassQueue(candidates.map((d) => ({ id: d.id, person_name: d.person_name, company_name: d.company_name, phone: d.phone, pipeline: d.pipeline })));
     setShowMassCallModal(false);
   }
 
@@ -1042,7 +1042,7 @@ export default function CrmPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!deal.phone) return;
-                              call.startCall({ id: deal.id, person_name: deal.person_name, company_name: deal.company_name, phone: deal.phone });
+                              call.startCall({ id: deal.id, person_name: deal.person_name, company_name: deal.company_name, phone: deal.phone, pipeline: deal.pipeline });
                             }}
                             disabled={!deal.phone}
                             title={deal.phone ? `Ligar para ${deal.phone}` : "Sem telefone cadastrado"}

@@ -233,7 +233,30 @@ export function CallWidget() {
                     🎙 Script
                   </div>
 
-                  {scriptPhase === "pergunta1" && (
+                  {scriptPhase === "pergunta1" && deal.pipeline === "quente" && (
+                    // Lead quente já se cadastrou pedindo a consultoria — sem o
+                    // "conseguiu assistir?" do frio (não faz sentido pra quem não
+                    // veio de webinar). Atendeu vai direto pro SDR IA, mesma lógica
+                    // de "Me liga depois"/"Não" do frio, só sem o passo intermediário.
+                    <>
+                      <p style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 12, background: "var(--surface-muted)", borderRadius: 8, padding: 10 }}>
+                        Olá, {call.sdrName || "—"} do time do Eduardo Lustosa do workshop que você se cadastrou, ligando para agendarmos 1 hora de consultoria 100% gratuita.
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button onClick={handleSimQualificar} className="btn-primary" style={{ padding: 10, fontSize: 13 }}>
+                          Sim
+                        </button>
+                        <button onClick={() => setScriptPhase("agendar")} style={outlineBtnStyle}>
+                          Me liga depois
+                        </button>
+                        <button onClick={handleNaoTemInteresse} style={{ ...outlineBtnStyle, color: "var(--status-late-fg)" }}>
+                          Não
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {scriptPhase === "pergunta1" && deal.pipeline !== "quente" && (
                     <>
                       <p style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 12, background: "var(--surface-muted)", borderRadius: 8, padding: 10 }}>
                         Olá, {call.sdrName || "—"} aqui do workshop para donos de academia que você se inscreveu e está no grupo, passando somente para saber se você conseguiu assistir.

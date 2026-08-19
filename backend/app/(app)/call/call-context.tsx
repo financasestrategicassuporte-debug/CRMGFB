@@ -7,6 +7,7 @@ export type CallableDeal = {
   person_name: string;
   company_name: string | null;
   phone: string | null;
+  pipeline: "quente" | "frio";
 };
 
 export type CallPhase = "ready" | "in-call" | "wrap-up";
