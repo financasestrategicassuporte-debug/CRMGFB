@@ -96,6 +96,16 @@ ${analysis || "(sem análise)"}
 ${transcript.trim() || "(sem transcrição registrada)"}`;
 }
 
+// "Não atendeu" nunca tem transcrição nem análise pra mostrar — em vez
+// do template cheio de seções vazias, uma nota curta e direta deixando
+// claro que a ligação não foi atendida.
+function buildNoAnswerNoteBody(deal: CallableDeal, duration: number) {
+  const now = new Date().toLocaleString("pt-BR");
+  const mm = String(Math.floor(duration / 60)).padStart(2, "0");
+  const ss = String(duration % 60).padStart(2, "0");
+  return `☎️ Ligação não atendida\n📅 ${now} · 📱 ${deal.phone ?? "—"} · ⏱ tocou por ${mm}:${ss}`;
+}
+
 export function CallProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CallState>(initialState);
   const stateRef = useRef(state);
@@ -268,24 +278,31 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setState((cur) => ({ ...cur, phase: "wrap-up", analyzing: true }));
 
     (async () => {
+      const noAnswer = result === "Não atendeu";
       let analysis = "";
-      try {
-        const analyzeRes = await fetch("/api/ai/analyze-call", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript }),
-        });
-        const analyzeData = await analyzeRes.json().catch(() => ({}));
-        analysis = analyzeData.analysis ?? "";
-      } catch {
-        analysis = "⚠️ Não foi possível analisar a ligação com IA.";
+      // "Não atendeu" nunca tem o que analisar (transcrição sempre
+      // vazia) — pula a chamada de IA e a nota curta é gravada direto,
+      // sem esperar esse round-trip à toa.
+      if (!noAnswer) {
+        try {
+          const analyzeRes = await fetch("/api/ai/analyze-call", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript }),
+          });
+          const analyzeData = await analyzeRes.json().catch(() => ({}));
+          analysis = analyzeData.analysis ?? "";
+        } catch {
+          analysis = "⚠️ Não foi possível analisar a ligação com IA.";
+        }
       }
 
       try {
+        const body = noAnswer ? buildNoAnswerNoteBody(deal, duration) : buildNoteBody(deal, duration, result, transcript, analysis);
         await fetch(`/api/deals/${deal.id}/notes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ body: buildNoteBody(deal, duration, result, transcript, analysis), is_ai_generated: true }),
+          body: JSON.stringify({ body, is_ai_generated: true }),
         });
       } catch {
         // se a anotação falhar, a análise ainda fica visível no widget pro usuário copiar
