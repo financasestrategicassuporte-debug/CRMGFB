@@ -68,6 +68,14 @@ export default function DashboardPage() {
   const [dateFrom, setDateFrom] = useState(REAL_DATA_START);
   const [dateTo, setDateTo] = useState("");
   const [showDateMenu, setShowDateMenu] = useState(false);
+  // Período do investimento é independente do período dos leads: uma
+  // captação de um mês gera lead que só vira venda semanas depois, então
+  // travar os dois no mesmo intervalo subestimava o retorno de campanha
+  // recente. Começa igual ao período de leads, mas cada um se ajusta
+  // sozinho a partir daí.
+  const [spendDateFrom, setSpendDateFrom] = useState(REAL_DATA_START);
+  const [spendDateTo, setSpendDateTo] = useState("");
+  const [showSpendDateMenu, setShowSpendDateMenu] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [secondsAgo, setSecondsAgo] = useState(0);
 
@@ -87,6 +95,8 @@ export default function DashboardPage() {
       const params = new URLSearchParams();
       if (dateFrom) params.set("from", dateFrom);
       if (dateTo) params.set("to", dateTo);
+      if (spendDateFrom) params.set("spendFrom", spendDateFrom);
+      if (spendDateTo) params.set("spendTo", spendDateTo);
       if (pipeline !== "geral") params.set("pipeline", pipeline);
       fetch(`/api/funnels/general?${params}`)
         .then((r) => r.json())
@@ -110,7 +120,7 @@ export default function DashboardPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [dateFrom, dateTo, pipeline]);
+  }, [dateFrom, dateTo, spendDateFrom, spendDateTo, pipeline]);
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -211,104 +221,209 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-          <div style={{ position: "relative" }}>
-            {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
-            <button
-              onClick={() => setShowDateMenu((v) => !v)}
-              style={{
-                position: "relative",
-                zIndex: 16,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 12px",
-                borderRadius: 10,
-                border: "1px solid var(--border)",
-                background: "#fff",
-                color: "var(--text)",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>calendar_month</span>
-              {dateFrom || dateTo ? `${dateFrom ? fmtDateShort(dateFrom) : "…"} – ${dateTo ? fmtDateShort(dateTo) : "hoje"}` : "Todo o período"}
-              <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
-            </button>
-            {showDateMenu && (
-              <div
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ position: "relative" }}>
+              {showDateMenu && <div onClick={() => setShowDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+              <button
+                onClick={() => setShowDateMenu((v) => !v)}
                 style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "calc(100% + 4px)",
-                  background: "#fff",
-                  border: "1px solid var(--border)",
+                  position: "relative",
+                  zIndex: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 12px",
                   borderRadius: 10,
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                  zIndex: 20,
-                  minWidth: 230,
-                  padding: 12,
+                  border: "1px solid var(--border)",
+                  background: "#fff",
+                  color: "var(--text)",
+                  fontSize: 13,
+                  fontWeight: 700,
                 }}
               >
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
-                  Filtrar por data de criação
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
-                  {datePresets().map((p) => (
+                <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>group_add</span>
+                Leads: {dateFrom || dateTo ? `${dateFrom ? fmtDateShort(dateFrom) : "…"} – ${dateTo ? fmtDateShort(dateTo) : "hoje"}` : "Todo o período"}
+                <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+              </button>
+              {showDateMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 4px)",
+                    background: "#fff",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    zIndex: 20,
+                    minWidth: 230,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
+                    Leads/negociações · data de criação
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                    {datePresets().map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => {
+                          setDateFrom(p.from);
+                          setDateTo(p.to);
+                          setShowDateMenu(false);
+                        }}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 999,
+                          background: dateFrom === p.from && dateTo === p.to ? "var(--status-ok-bg)" : "#fff",
+                          color: dateFrom === p.from && dateTo === p.to ? "var(--accent-darker)" : "var(--text)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "4px 9px",
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Personalizado
+                  </div>
+                  <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
+                  />
+                  <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Até</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 10 }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
                     <button
-                      key={p.label}
-                      type="button"
                       onClick={() => {
-                        setDateFrom(p.from);
-                        setDateTo(p.to);
-                        setShowDateMenu(false);
+                        setDateFrom("");
+                        setDateTo("");
                       }}
-                      style={{
-                        border: "1px solid var(--border)",
-                        borderRadius: 999,
-                        background: dateFrom === p.from && dateTo === p.to ? "var(--status-ok-bg)" : "#fff",
-                        color: dateFrom === p.from && dateTo === p.to ? "var(--accent-darker)" : "var(--text)",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: "4px 9px",
-                      }}
+                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: "6px 0", fontSize: 12 }}
                     >
-                      {p.label}
+                      Ver tudo
                     </button>
-                  ))}
+                    <button onClick={() => setShowDateMenu(false)} className="btn-primary" style={{ flex: 1, padding: "6px 0", fontSize: 12 }}>
+                      Aplicar
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 6, textTransform: "uppercase" }}>
-                  Personalizado
+              )}
+            </div>
+
+            <div style={{ position: "relative" }}>
+              {showSpendDateMenu && <div onClick={() => setShowSpendDateMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 15 }} />}
+              <button
+                onClick={() => setShowSpendDateMenu((v) => !v)}
+                style={{
+                  position: "relative",
+                  zIndex: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "7px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "#fff",
+                  color: "var(--text)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <span className="msym" style={{ fontSize: 15, color: "var(--accent-darker)" }}>ads_click</span>
+                Investimento: {spendDateFrom || spendDateTo ? `${spendDateFrom ? fmtDateShort(spendDateFrom) : "…"} – ${spendDateTo ? fmtDateShort(spendDateTo) : "hoje"}` : "Todo o período"}
+                <span className="msym" style={{ fontSize: 15, color: "var(--text-faint)" }}>expand_more</span>
+              </button>
+              {showSpendDateMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "calc(100% + 4px)",
+                    background: "#fff",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                    zIndex: 20,
+                    minWidth: 250,
+                    padding: 12,
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 8, textTransform: "uppercase" }}>
+                    Investimento em mídia · período separado
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 0, marginBottom: 10, lineHeight: 1.4 }}>
+                    Independente do período de leads — uma captação de uma semana pode gerar venda semanas depois.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                    {datePresets().map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => {
+                          setSpendDateFrom(p.from);
+                          setSpendDateTo(p.to);
+                          setShowSpendDateMenu(false);
+                        }}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 999,
+                          background: spendDateFrom === p.from && spendDateTo === p.to ? "var(--status-ok-bg)" : "#fff",
+                          color: spendDateFrom === p.from && spendDateTo === p.to ? "var(--accent-darker)" : "var(--text)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "4px 9px",
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Personalizado
+                  </div>
+                  <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
+                  <input
+                    type="date"
+                    value={spendDateFrom}
+                    onChange={(e) => setSpendDateFrom(e.target.value)}
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
+                  />
+                  <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Até</label>
+                  <input
+                    type="date"
+                    value={spendDateTo}
+                    onChange={(e) => setSpendDateTo(e.target.value)}
+                    style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 10 }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => {
+                        setSpendDateFrom("");
+                        setSpendDateTo("");
+                      }}
+                      style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: "6px 0", fontSize: 12 }}
+                    >
+                      Ver tudo
+                    </button>
+                    <button onClick={() => setShowSpendDateMenu(false)} className="btn-primary" style={{ flex: 1, padding: "6px 0", fontSize: 12 }}>
+                      Aplicar
+                    </button>
+                  </div>
                 </div>
-                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>De</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 8 }}
-                />
-                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Até</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 12.5, marginBottom: 10 }}
-                />
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button
-                    onClick={() => {
-                      setDateFrom("");
-                      setDateTo("");
-                    }}
-                    style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", padding: "6px 0", fontSize: 12 }}
-                  >
-                    Ver tudo
-                  </button>
-                  <button onClick={() => setShowDateMenu(false)} className="btn-primary" style={{ flex: 1, padding: "6px 0", fontSize: 12 }}>
-                    Aplicar
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
