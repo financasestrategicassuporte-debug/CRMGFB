@@ -38,6 +38,8 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", plan_id: "", valor: "" });
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -69,6 +71,14 @@ export default function ClientesPage() {
     load();
   }
 
+  async function deleteClient(id: string) {
+    setDeletingId(id);
+    await fetch(`/api/clients/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    setConfirmDeleteId(null);
+    load();
+  }
+
   return (
     <div style={{ padding: 32 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -90,7 +100,34 @@ export default function ClientesPage() {
             const financeiro = FINANCEIRO_LABEL[client.financeiro_status];
             return (
               <div key={client.id} className="card">
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{client.name}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{client.name}</div>
+                  {confirmDeleteId === client.id ? (
+                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        style={{ border: "1px solid var(--border)", borderRadius: 6, background: "#fff", fontSize: 10.5, padding: "3px 7px", fontWeight: 700 }}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => deleteClient(client.id)}
+                        disabled={deletingId === client.id}
+                        style={{ border: "none", borderRadius: 6, background: "var(--status-late-fg)", color: "#fff", fontSize: 10.5, padding: "3px 7px", fontWeight: 700, opacity: deletingId === client.id ? 0.6 : 1 }}
+                      >
+                        {deletingId === client.id ? "Excluindo…" : "Excluir"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(client.id)}
+                      title="Excluir cliente"
+                      style={{ border: "none", background: "none", color: "var(--text-faint)", flexShrink: 0, display: "flex" }}
+                    >
+                      <span className="msym" style={{ fontSize: 17 }}>delete</span>
+                    </button>
+                  )}
+                </div>
                 <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 2 }}>
                   {client.plan?.name ?? "Sem plano"} · Semana {client.current_week}/{client.plan?.total_weeks ?? 12}
                 </div>

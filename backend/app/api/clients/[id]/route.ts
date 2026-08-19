@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, requireAdmin } from "@/lib/auth";
 import { parseBody, dbError } from "@/lib/api";
 import { clientUpdateSchema } from "@/lib/validation";
 
@@ -29,7 +29,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   return NextResponse.json({ client: data });
 }
 
+/** Apaga o cliente e tudo que depende dele em cascata (compras, semanas
+ * de progresso, cobranças, auditorias, RFV...) — DDL já garante o
+ * `ON DELETE CASCADE`. Só admin, mesmo padrão de outras ações
+ * destrutivas/sensíveis da plataforma. */
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  const { profile } = await getCurrentProfile();
+  const forbidden = requireAdmin(profile?.role);
+  if (forbidden) return forbidden;
+
   const { supabase } = await getCurrentProfile();
   const { error } = await supabase.from("clients").delete().eq("id", params.id);
   if (error) return dbError(error);
