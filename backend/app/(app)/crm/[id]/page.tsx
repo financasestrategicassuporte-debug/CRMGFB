@@ -172,6 +172,10 @@ export default function DealDetailPage() {
   const [historyTab, setHistoryTab] = useState("Histórico");
   const [noteText, setNoteText] = useState("");
   const [showQualify, setShowQualify] = useState(false);
+  // O widget de Ligação Massiva manda o SDR pra cá só pra preencher o
+  // wizard (?qualify=1) — depois de terminar, ele não quer ficar vendo
+  // o card da negociação, quer voltar pro kanban de onde veio.
+  const [qualifyFromCall, setQualifyFromCall] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskForm, setTaskForm] = useState({ title: "", description: "", assigned_to: "", task_type: "tarefa", due_date: "" });
@@ -216,6 +220,7 @@ export default function DealDetailPage() {
     if (loading || !deal) return;
     if (searchParams.get("qualify") === "1") {
       setShowQualify(true);
+      setQualifyFromCall(true);
       router.replace(`/crm/${id}`);
     } else if (searchParams.get("lost") === "1") {
       const reason = searchParams.get("reason");
@@ -744,7 +749,10 @@ export default function DealDetailPage() {
           personName={deal.person_name}
           sdrNome={deal.assignee?.name ?? profileName}
           pipeline={deal.pipeline}
-          onClose={() => setShowQualify(false)}
+          onClose={() => {
+            setShowQualify(false);
+            if (qualifyFromCall) router.push("/crm");
+          }}
           onSaved={load}
         />
       )}
