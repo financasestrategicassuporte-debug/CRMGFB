@@ -110,7 +110,6 @@ export default function PainelPage() {
 
   const showBoth = role === "admin";
   const myRanking = role === "closer" ? closerRanking : sdrRanking;
-  const myPosition = myRanking.findIndex((r) => r.id === meId);
 
   return (
     <div>
@@ -140,18 +139,6 @@ export default function PainelPage() {
           <p>Carregando…</p>
         ) : tab === "Ranking" ? (
           <>
-            {!showBoth && myPosition >= 0 && (
-              <div className="card" style={{ background: "var(--bg-dark)", color: "#fff", marginBottom: 20, display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ fontSize: 34 }}>{myPosition < 3 ? MEDAL[myPosition] : "🏁"}</div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 16 }}>
-                    {myPosition === 0 ? "Você está em 1º lugar esse mês!" : `Você está em ${myPosition + 1}º lugar esse mês`}
-                  </div>
-                  <div style={{ color: "var(--text-faint)", fontSize: 12.5, textTransform: "capitalize" }}>{monthLabel()}</div>
-                </div>
-              </div>
-            )}
-
             {showBoth ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 20 }}>
                 <section className="card">
