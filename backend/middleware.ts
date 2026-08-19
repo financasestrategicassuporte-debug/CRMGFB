@@ -60,5 +60,7 @@ export const config = {
     "/rfv/:path*",
     "/execucao/:path*",
     "/perfil/:path*",
+    "/painel/:path*",
+    "/agenda/:path*",
   ],
 };

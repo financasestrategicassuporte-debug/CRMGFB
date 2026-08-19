@@ -50,7 +50,9 @@ const NAV_GROUPS_TEAM = [
   {
     label: "GESTÃO",
     items: [
+      { href: "/painel", icon: "local_fire_department", label: "Dashboard" },
       { href: "/crm", icon: "contacts", label: "Meu CRM" },
+      { href: "/agenda", icon: "calendar_month", label: "Agenda" },
       { href: "/comissoes", icon: "savings", label: "Minhas Comissões" },
     ],
   },

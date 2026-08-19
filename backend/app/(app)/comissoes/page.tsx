@@ -16,6 +16,17 @@ type Commission = {
 
 type TeamMember = { id: string; name: string; role: string };
 
+type MeetingWon = {
+  dealId: string;
+  personName: string;
+  companyName: string | null;
+  revenue: number;
+  wonAt: string | null;
+  meetingDate: string | null;
+  sdr: { id: string; name: string } | null;
+  closer: { id: string; name: string } | null;
+};
+
 type CommissionRules = {
   id: string;
   sdr_base_amount: number;
@@ -34,6 +45,11 @@ function fmtBRL(v: number) {
 
 function fmtK(v: number) {
   return v >= 1000 ? `R$ ${(v / 1000).toFixed(1)}k` : fmtBRL(v);
+}
+
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR");
 }
 
 function fmtPeriod(iso: string) {
@@ -59,6 +75,7 @@ export default function ComissoesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(formDefaults);
+  const [meetingsWon, setMeetingsWon] = useState<MeetingWon[]>([]);
   const [rules, setRules] = useState<CommissionRules | null>(null);
   const [rulesForm, setRulesForm] = useState({
     sdr_base_amount: "",
@@ -107,6 +124,9 @@ export default function ComissoesPage() {
       .then((d) => setTeam((d.team ?? []).filter((t: TeamMember) => t.role === "sdr" || t.role === "closer")));
     load();
     loadRules();
+    fetch("/api/commissions/meetings-won")
+      .then((r) => r.json())
+      .then((d) => setMeetingsWon(d.meetings ?? []));
   }, []);
 
   async function saveRules(e: React.FormEvent) {
@@ -341,6 +361,30 @@ export default function ComissoesPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {byTipo("venda").map((c) => <CommissionRow key={c.id} c={c} />)}
                 {byTipo("venda").length === 0 && <p style={{ color: "var(--text-faint)" }}>Nenhuma comissão por venda registrada ainda.</p>}
+              </div>
+            </section>
+
+            <section className="card">
+              <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>military_tech</span>
+                Reuniões que {isAdmin ? "viraram" : "você agendou e viraram"} venda
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {meetingsWon.map((m) => (
+                  <div key={m.dealId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--border)", borderRadius: 10, padding: 12, flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>
+                        {m.companyName ? `${m.companyName} — ${m.personName}` : m.personName}
+                      </div>
+                      <div style={{ color: "var(--text-faint)", fontSize: 12 }}>
+                        Reunião {fmtDate(m.meetingDate)} · Venda {fmtDate(m.wonAt)}
+                        {isAdmin && ` · SDR: ${m.sdr?.name ?? "—"} · Closer: ${m.closer?.name ?? "—"}`}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 800, color: "var(--accent-darker)" }}>{fmtK(m.revenue)}</div>
+                  </div>
+                ))}
+                {meetingsWon.length === 0 && <p style={{ color: "var(--text-faint)" }}>Nenhuma reunião virou venda ainda.</p>}
               </div>
             </section>
           </div>
