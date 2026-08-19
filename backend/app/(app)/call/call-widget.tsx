@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCall, type CallResult } from "./call-context";
 
+// "Agendou" e "Desqualificado" saíram daqui — só existem como consequência
+// do fluxo de script depois de "Atendeu" (handleSimQualificar /
+// handleNaoTemInteresse), nunca como atalho direto: clicar neles aqui só
+// marcava o resultado sem disparar tarefa/nota/redirecionamento nenhum.
 const RESULT_OPTIONS: { value: CallResult; icon: string }[] = [
   { value: "Atendeu", icon: "check_circle" },
   { value: "Não atendeu", icon: "cancel" },
-  { value: "Agendou", icon: "event_available" },
-  { value: "Desqualificado", icon: "block" },
 ];
 
 const NAO_TEM_INTERESSE_REASON = "Não tem interesse";
@@ -64,15 +66,12 @@ export function CallWidget() {
       setScriptPhase("pergunta1");
       return;
     }
-    if (value === "Não atendeu") {
-      // Sem conversa pra analisar — encerra e já disca o próximo direto
-      // (sem passar pela tela "ready"), sem esperar o countdown de 8s do
-      // wrap-up normal nem precisar clicar "Ligar agora" de novo.
-      call.endCall("Não atendeu");
-      if (call.massMode) call.advanceAndDial();
-      return;
-    }
-    call.setResult(value);
+    // "Não atendeu": sem conversa pra analisar — encerra e já disca o
+    // próximo direto (sem passar pela tela "ready"), sem esperar o
+    // countdown de 8s do wrap-up normal nem precisar clicar "Ligar
+    // agora" de novo.
+    call.endCall("Não atendeu");
+    if (call.massMode) call.advanceAndDial();
   }
 
   async function handleNaoTemInteresse() {
