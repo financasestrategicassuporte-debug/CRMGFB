@@ -117,6 +117,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const advanceRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tarefas de "Ligação" que já estavam pendentes ANTES de discar —
+  // snapshot tirado em startDialing() e usado (não reconsultado) em
+  // endCall() pra marcar como concluída. Se reconsultasse na hora de
+  // encerrar, uma tarefa nova criada DURANTE a ligação (ex. "Ligação
+  // agendada" do "Me liga depois") também seria pega e marcada como
+  // concluída na hora — o callback futuro nasceria morto.
+  const pendingCallTaskIdsRef = useRef<string[]>([]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -204,6 +211,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setState((s) => (s.callStartedAt ? { ...s, elapsedSeconds: Math.floor((Date.now() - s.callStartedAt) / 1000) } : s));
     }, 1000);
     startRecognition();
+
+    pendingCallTaskIdsRef.current = [];
+    fetch(`/api/deals/${deal.id}/tasks`)
+      .then((r) => r.json())
+      .then((d) => {
+        pendingCallTaskIdsRef.current = (d.tasks ?? [])
+          .filter((t: any) => t.task_type === "ligacao" && !t.done)
+          .map((t: any) => t.id);
+      })
+      .catch(() => {});
   }, [startRecognition, stopTimer]);
 
   const dial = useCallback(() => {
@@ -276,15 +293,17 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
       // Só marca a tarefa "Ligação" como concluída se a chamada durou de
       // verdade — não no momento de discar (era possível "ligar" e
-      // desligar na hora só pra marcar a tarefa como feita).
-      if (duration >= MIN_CALL_SECONDS_TO_COMPLETE_TASK) {
+      // desligar na hora só pra marcar a tarefa como feita). Usa o
+      // snapshot tirado em startDialing (tarefas que já estavam
+      // pendentes ANTES de discar), não uma nova consulta — senão uma
+      // tarefa de callback futuro criada durante ESSA ligação (ex.
+      // "Ligação agendada" do "Me liga depois") seria marcada como
+      // concluída junto, por engano.
+      if (duration >= MIN_CALL_SECONDS_TO_COMPLETE_TASK && pendingCallTaskIdsRef.current.length > 0) {
         try {
-          const tasksRes = await fetch(`/api/deals/${deal.id}/tasks`);
-          const tasksData = await tasksRes.json();
-          const pendentes = (tasksData.tasks ?? []).filter((t: any) => t.task_type === "ligacao" && !t.done);
           await Promise.all(
-            pendentes.map((t: any) =>
-              fetch(`/api/deals/${deal.id}/tasks/${t.id}`, {
+            pendingCallTaskIdsRef.current.map((taskId) =>
+              fetch(`/api/deals/${deal.id}/tasks/${taskId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ done: true }),
