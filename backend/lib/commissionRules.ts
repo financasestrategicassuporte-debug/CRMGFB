@@ -1,64 +1,99 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 
-/** Comissionamento automático do SDR: R$10 por reunião qualificada
- * comparecida + R$10 de bônus quando a negociação que ele é dono fecha
- * em venda. Só o SDR (não o Closer) recebe essas duas — o admin ainda
- * lança fixo/extra manualmente pra qualquer papel. A constraint
- * (deal_id, tipo) no banco garante que cada negociação só gera uma
- * comissão de cada tipo, então essas funções podem ser chamadas mais
- * de uma vez sem duplicar (o insert repetido só falha silenciosamente). */
-
-export const SDR_MEETING_COMMISSION = 10;
-export const SDR_SALE_COMMISSION = 10;
-
-async function isSdr(admin: SupabaseClient<Database>, profileId: string | null) {
-  if (!profileId) return false;
-  const { data } = await admin.from("profiles").select("role").eq("id", profileId).maybeSingle();
-  return data?.role === "sdr";
-}
+/** Comissionamento automático por reunião comparecida + venda fechada —
+ * SDR (dono da negociação, `deals.assigned_to`) e Closer (responsável
+ * pela tarefa de Reunião daquela negociação, `deal_tasks.assigned_to`
+ * quando task_type é "reuniao") ganham cada um a sua, com os valores
+ * configurados em /comissoes (admin) — ver `commission_rules`. A
+ * constraint (deal_id, tipo, closer_id) no banco garante que cada
+ * colaborador só ganha uma vez por negociação/tipo, então essas funções
+ * podem ser chamadas mais de uma vez sem duplicar (insert repetido só
+ * falha silenciosamente). */
 
 function currentPeriod() {
   return `${new Date().toISOString().slice(0, 7)}-01`;
 }
 
-export async function awardMeetingCommission(admin: SupabaseClient<Database>, dealId: string, assignedTo: string | null) {
-  if (!(await isSdr(admin, assignedTo))) return;
+async function roleOf(admin: SupabaseClient<Database>, profileId: string | null) {
+  if (!profileId) return null;
+  const { data } = await admin.from("profiles").select("role").eq("id", profileId).maybeSingle();
+  return data?.role ?? null;
+}
+
+/** O closer "dono" da reunião de uma negociação: quem consta como
+ * responsável na tarefa de Reunião mais recente daquele negócio — não
+ * existe um campo `deals.closer_id` separado, já que `assigned_to` do
+ * deal é sempre o SDR (a distribuição automática só atribui a SDRs). */
+async function findCloserForDeal(admin: SupabaseClient<Database>, dealId: string) {
+  const { data } = await admin
+    .from("deal_tasks")
+    .select("assigned_to")
+    .eq("deal_id", dealId)
+    .eq("task_type", "reuniao")
+    .not("assigned_to", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data?.assigned_to) return null;
+  const role = await roleOf(admin, data.assigned_to);
+  return role === "closer" ? data.assigned_to : null;
+}
+
+async function awardIfRole(
+  admin: SupabaseClient<Database>,
+  dealId: string,
+  profileId: string | null,
+  role: "sdr" | "closer",
+  amount: number,
+  tipo: "reuniao" | "venda"
+) {
+  if (!profileId || amount <= 0) return;
+  if ((await roleOf(admin, profileId)) !== role) return;
   await admin.from("commissions").insert({
-    closer_id: assignedTo!,
+    closer_id: profileId,
     deal_id: dealId,
-    amount: SDR_MEETING_COMMISSION,
-    tipo: "reuniao",
+    amount,
+    tipo,
     period: currentPeriod(),
   });
 }
 
+export async function awardMeetingCommission(admin: SupabaseClient<Database>, dealId: string, assignedTo: string | null) {
+  const rules = await getCommissionRules(admin);
+  if (!rules) return;
+  await awardIfRole(admin, dealId, assignedTo, "sdr", rules.sdr_meeting_amount, "reuniao");
+  const closerId = await findCloserForDeal(admin, dealId);
+  await awardIfRole(admin, dealId, closerId, "closer", rules.closer_meeting_amount, "reuniao");
+}
+
 export async function awardSaleCommission(admin: SupabaseClient<Database>, dealId: string, assignedTo: string | null) {
-  if (!(await isSdr(admin, assignedTo))) return;
-  await admin.from("commissions").insert({
-    closer_id: assignedTo!,
-    deal_id: dealId,
-    amount: SDR_SALE_COMMISSION,
-    tipo: "venda",
-    period: currentPeriod(),
-  });
+  const rules = await getCommissionRules(admin);
+  if (!rules) return;
+  await awardIfRole(admin, dealId, assignedTo, "sdr", rules.sdr_sale_amount, "venda");
+  const closerId = await findCloserForDeal(admin, dealId);
+  await awardIfRole(admin, dealId, closerId, "closer", rules.closer_sale_amount, "venda");
 }
 
 /** Motivo de perda que indica que a qualificação foi mal feita/mentida
  * pelo SDR — quando o Closer marca a negociação como perdida com esse
- * motivo exato, a comissão automática (reunião comparecida e/ou venda,
- * se já tivesse fechado antes de reabrir) que o SDR ganhou por essa
- * negociação é revogada. */
+ * motivo exato, as comissões automáticas (reunião comparecida e/ou
+ * venda, se já tivesse fechado antes de reabrir) que SDR e Closer
+ * ganharam por essa negociação são revogadas — os dois, já que se a
+ * reunião não foi de verdade qualificada, não foi reunião de verdade
+ * pra nenhum dos dois papéis. */
 export const LOST_REASON_REVOKES_SDR_COMMISSION = "Lead desqualificado — erro do SDR ou mentiu na qualificação";
 
 export async function revokeSdrCommission(admin: SupabaseClient<Database>, dealId: string) {
   await admin.from("commissions").delete().eq("deal_id", dealId).in("tipo", ["reuniao", "venda"]);
 }
 
-/** Regra base de comissionamento (singleton) — ver migração
- * 0016_commission_rules.sql. Configurável em /comissoes (admin): 1 valor
- * mensal fixo pra todo SDR ativo, 1 pra todo Closer ativo, com um valor
- * de campanha opcional que substitui o base enquanto estiver ligado. */
+/** Regra base de comissionamento (singleton) — ver migrações
+ * 0016_commission_rules.sql / 0017_closer_commission_rules.sql.
+ * Configurável em /comissoes (admin): fixa mensal (SDR/Closer) + valor
+ * por reunião comparecida e por venda fechada (SDR/Closer), com um
+ * valor de campanha opcional que substitui só a fixa mensal enquanto
+ * estiver ligado. */
 export async function getCommissionRules(admin: SupabaseClient<Database>) {
   const { data } = await admin.from("commission_rules").select("*").limit(1).maybeSingle();
   return data;

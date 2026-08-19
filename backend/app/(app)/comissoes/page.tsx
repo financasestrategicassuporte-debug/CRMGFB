@@ -31,6 +31,10 @@ type CommissionRules = {
   id: string;
   sdr_base_amount: number;
   closer_base_amount: number;
+  sdr_meeting_amount: number;
+  sdr_sale_amount: number;
+  closer_meeting_amount: number;
+  closer_sale_amount: number;
   campaign_active: boolean;
   campaign_label: string | null;
   campaign_sdr_amount: number | null;
@@ -80,6 +84,10 @@ export default function ComissoesPage() {
   const [rulesForm, setRulesForm] = useState({
     sdr_base_amount: "",
     closer_base_amount: "",
+    sdr_meeting_amount: "",
+    sdr_sale_amount: "",
+    closer_meeting_amount: "",
+    closer_sale_amount: "",
     campaign_active: false,
     campaign_label: "",
     campaign_sdr_amount: "",
@@ -106,6 +114,10 @@ export default function ComissoesPage() {
           setRulesForm({
             sdr_base_amount: String(r.sdr_base_amount ?? ""),
             closer_base_amount: String(r.closer_base_amount ?? ""),
+            sdr_meeting_amount: String(r.sdr_meeting_amount ?? ""),
+            sdr_sale_amount: String(r.sdr_sale_amount ?? ""),
+            closer_meeting_amount: String(r.closer_meeting_amount ?? ""),
+            closer_sale_amount: String(r.closer_sale_amount ?? ""),
             campaign_active: r.campaign_active,
             campaign_label: r.campaign_label ?? "",
             campaign_sdr_amount: r.campaign_sdr_amount != null ? String(r.campaign_sdr_amount) : "",
@@ -139,6 +151,10 @@ export default function ComissoesPage() {
       body: JSON.stringify({
         sdr_base_amount: Number(rulesForm.sdr_base_amount) || 0,
         closer_base_amount: Number(rulesForm.closer_base_amount) || 0,
+        sdr_meeting_amount: Number(rulesForm.sdr_meeting_amount) || 0,
+        sdr_sale_amount: Number(rulesForm.sdr_sale_amount) || 0,
+        closer_meeting_amount: Number(rulesForm.closer_meeting_amount) || 0,
+        closer_sale_amount: Number(rulesForm.closer_sale_amount) || 0,
         campaign_active: rulesForm.campaign_active,
         campaign_label: rulesForm.campaign_label || null,
         campaign_sdr_amount: rulesForm.campaign_sdr_amount ? Number(rulesForm.campaign_sdr_amount) : null,
@@ -280,6 +296,28 @@ export default function ComissoesPage() {
               </div>
             </div>
 
+            <p style={{ fontSize: 12.5, color: "var(--text-faint)", marginTop: 0, marginBottom: 10 }}>
+              Por evento — mesma lógica do SDR (reunião comparecida + venda fechada), agora também pro Closer (identificado pela tarefa de Reunião de cada negociação). Deixe 0 pra desativar o automático de um papel.
+            </p>
+            <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={labelStyle}>Por reunião comparecida · SDR</label>
+                <input type="number" min="0" step="0.01" value={rulesForm.sdr_meeting_amount} onChange={(e) => setRulesForm({ ...rulesForm, sdr_meeting_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
+              </div>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={labelStyle}>Por venda fechada · SDR</label>
+                <input type="number" min="0" step="0.01" value={rulesForm.sdr_sale_amount} onChange={(e) => setRulesForm({ ...rulesForm, sdr_sale_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
+              </div>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={labelStyle}>Por reunião comparecida · Closer</label>
+                <input type="number" min="0" step="0.01" value={rulesForm.closer_meeting_amount} onChange={(e) => setRulesForm({ ...rulesForm, closer_meeting_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
+              </div>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={labelStyle}>Por venda fechada · Closer</label>
+                <input type="number" min="0" step="0.01" value={rulesForm.closer_sale_amount} onChange={(e) => setRulesForm({ ...rulesForm, closer_sale_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
+              </div>
+            </div>
+
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, marginBottom: rulesForm.campaign_active ? 10 : 0, cursor: "pointer" }}>
               <input type="checkbox" checked={rulesForm.campaign_active} onChange={(e) => setRulesForm({ ...rulesForm, campaign_active: e.target.checked })} />
               Campanha ativa — aumentar comissionamento nessa semana/período
@@ -345,7 +383,7 @@ export default function ComissoesPage() {
             <section className="card">
               <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>event_available</span>
-                Reuniões qualificadas comparecidas · automático (SDR)
+                Reuniões qualificadas comparecidas · automático (SDR + Closer)
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {byTipo("reuniao").map((c) => <CommissionRow key={c.id} c={c} />)}
@@ -356,7 +394,7 @@ export default function ComissoesPage() {
             <section className="card">
               <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>handshake</span>
-                Por venda fechada · automático (SDR)
+                Por venda fechada · automático (SDR + Closer)
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {byTipo("venda").map((c) => <CommissionRow key={c.id} c={c} />)}

@@ -161,6 +161,10 @@ export const commissionSchema = z.object({
 export const commissionRulesUpdateSchema = z.object({
   sdr_base_amount: z.number().nonnegative().optional(),
   closer_base_amount: z.number().nonnegative().optional(),
+  sdr_meeting_amount: z.number().nonnegative().optional(),
+  sdr_sale_amount: z.number().nonnegative().optional(),
+  closer_meeting_amount: z.number().nonnegative().optional(),
+  closer_sale_amount: z.number().nonnegative().optional(),
   campaign_active: z.boolean().optional(),
   campaign_label: z.string().nullable().optional(),
   campaign_sdr_amount: z.number().nonnegative().nullable().optional(),

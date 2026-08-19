@@ -526,8 +526,12 @@ export type Database = {
           campaign_label: string | null
           campaign_sdr_amount: number | null
           closer_base_amount: number
+          closer_meeting_amount: number
+          closer_sale_amount: number
           id: string
           sdr_base_amount: number
+          sdr_meeting_amount: number
+          sdr_sale_amount: number
           updated_at: string
         }
         Insert: {
@@ -536,8 +540,12 @@ export type Database = {
           campaign_label?: string | null
           campaign_sdr_amount?: number | null
           closer_base_amount?: number
+          closer_meeting_amount?: number
+          closer_sale_amount?: number
           id?: string
           sdr_base_amount?: number
+          sdr_meeting_amount?: number
+          sdr_sale_amount?: number
           updated_at?: string
         }
         Update: {
@@ -546,8 +554,12 @@ export type Database = {
           campaign_label?: string | null
           campaign_sdr_amount?: number | null
           closer_base_amount?: number
+          closer_meeting_amount?: number
+          closer_sale_amount?: number
           id?: string
           sdr_base_amount?: number
+          sdr_meeting_amount?: number
+          sdr_sale_amount?: number
           updated_at?: string
         }
         Relationships: []
