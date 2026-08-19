@@ -519,6 +519,39 @@ export type Database = {
           },
         ]
       }
+      commission_rules: {
+        Row: {
+          campaign_active: boolean
+          campaign_closer_amount: number | null
+          campaign_label: string | null
+          campaign_sdr_amount: number | null
+          closer_base_amount: number
+          id: string
+          sdr_base_amount: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_active?: boolean
+          campaign_closer_amount?: number | null
+          campaign_label?: string | null
+          campaign_sdr_amount?: number | null
+          closer_base_amount?: number
+          id?: string
+          sdr_base_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_active?: boolean
+          campaign_closer_amount?: number | null
+          campaign_label?: string | null
+          campaign_sdr_amount?: number | null
+          closer_base_amount?: number
+          id?: string
+          sdr_base_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       commissions: {
         Row: {
           amount: number

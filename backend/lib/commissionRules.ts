@@ -54,3 +54,48 @@ export const LOST_REASON_REVOKES_SDR_COMMISSION = "Lead desqualificado — erro 
 export async function revokeSdrCommission(admin: SupabaseClient<Database>, dealId: string) {
   await admin.from("commissions").delete().eq("deal_id", dealId).in("tipo", ["reuniao", "venda"]);
 }
+
+/** Regra base de comissionamento (singleton) — ver migração
+ * 0016_commission_rules.sql. Configurável em /comissoes (admin): 1 valor
+ * mensal fixo pra todo SDR ativo, 1 pra todo Closer ativo, com um valor
+ * de campanha opcional que substitui o base enquanto estiver ligado. */
+export async function getCommissionRules(admin: SupabaseClient<Database>) {
+  const { data } = await admin.from("commission_rules").select("*").limit(1).maybeSingle();
+  return data;
+}
+
+function baseAmountFor(rules: NonNullable<Awaited<ReturnType<typeof getCommissionRules>>>, role: "sdr" | "closer") {
+  if (rules.campaign_active) {
+    const boosted = role === "sdr" ? rules.campaign_sdr_amount : rules.campaign_closer_amount;
+    if (boosted != null) return boosted;
+  }
+  return role === "sdr" ? rules.sdr_base_amount : rules.closer_base_amount;
+}
+
+/** Gera a comissão "fixo" do período corrente pra cada SDR/Closer ativo
+ * que ainda não tem uma lançada nesse mês — idempotente (pode rodar
+ * quantas vezes quiser no mesmo período, nunca duplica). Roda: (1) na
+ * hora, quando o admin salva a regra base em /comissoes; (2) todo dia
+ * no cron, pra pegar gente nova que entrou no time no meio do mês. Não
+ * mexe em fixas já lançadas — nem quando o valor da regra muda depois. */
+export async function generateMonthlyBaseCommissions(admin: SupabaseClient<Database>) {
+  const rules = await getCommissionRules(admin);
+  if (!rules) return { created: 0 };
+
+  const period = currentPeriod();
+  const { data: team } = await admin.from("profiles").select("id,role").in("role", ["sdr", "closer"]).eq("active", true);
+  if (!team || team.length === 0) return { created: 0 };
+
+  const { data: existing } = await admin.from("commissions").select("closer_id").eq("tipo", "fixo").eq("period", period);
+  const already = new Set((existing ?? []).map((c) => c.closer_id));
+
+  let created = 0;
+  for (const member of team) {
+    if (already.has(member.id)) continue;
+    const amount = baseAmountFor(rules, member.role as "sdr" | "closer");
+    if (amount <= 0) continue;
+    const { error } = await admin.from("commissions").insert({ closer_id: member.id, tipo: "fixo", amount, period });
+    if (!error) created++;
+  }
+  return { created };
+}

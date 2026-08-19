@@ -8,6 +8,7 @@ import { autoDistributeNewLeads } from "@/lib/leadAutoDistribute";
 import { sendWhatsapp } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/email";
 import { syncMarketingSpend } from "@/lib/integrations/marketingSpend";
+import { generateMonthlyBaseCommissions } from "@/lib/commissionRules";
 
 // Varrer o backlog inteiro de leads (item 5 abaixo) pode levar mais que
 // os 10s padrão da function em dias com fila grande — 60s é o teto do
@@ -26,7 +27,10 @@ export const maxDuration = 60;
  * abrir Dashboard/Dashboard de Produtos; (5) varre todo o backlog de
  * leads ainda não convertidos e distribui (se o modo automático estiver
  * ligado) — não só os sincronizados nessa execução, pra nenhum lead
- * ficar parado esperando o próximo toggle manual. */
+ * ficar parado esperando o próximo toggle manual; (6) gera a comissão
+ * fixa mensal de quem ainda não tem uma nesse período, pela regra base
+ * configurada em /comissoes — mesma geração também roda na hora quando
+ * o admin salva a regra. */
 export async function GET(request: Request) {
   const forbidden = verifyCronSecret(request);
   if (forbidden) return forbidden;
@@ -105,5 +109,13 @@ export async function GET(request: Request) {
     // não deixa a distribuição automática quebrar o cron
   }
 
-  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio, spendResult, leadsDistribuidos });
+  let comissoesGeradas = 0;
+  try {
+    const result = await generateMonthlyBaseCommissions(admin);
+    comissoesGeradas = result.created;
+  } catch {
+    // não deixa a geração de comissão fixa quebrar o cron
+  }
+
+  return NextResponse.json({ disparos, dealDisparos: dealResult.disparos, leadsQuente, leadsFrio, spendResult, leadsDistribuidos, comissoesGeradas });
 }

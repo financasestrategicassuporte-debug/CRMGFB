@@ -16,6 +16,16 @@ type Commission = {
 
 type TeamMember = { id: string; name: string; role: string };
 
+type CommissionRules = {
+  id: string;
+  sdr_base_amount: number;
+  closer_base_amount: number;
+  campaign_active: boolean;
+  campaign_label: string | null;
+  campaign_sdr_amount: number | null;
+  campaign_closer_amount: number | null;
+};
+
 const TIPO_LABEL: Record<string, string> = { fixo: "Fixo", extra: "Extra", venda: "Por venda", reuniao: "Reunião comparecida" };
 
 function fmtBRL(v: number) {
@@ -49,6 +59,17 @@ export default function ComissoesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(formDefaults);
+  const [rules, setRules] = useState<CommissionRules | null>(null);
+  const [rulesForm, setRulesForm] = useState({
+    sdr_base_amount: "",
+    closer_base_amount: "",
+    campaign_active: false,
+    campaign_label: "",
+    campaign_sdr_amount: "",
+    campaign_closer_amount: "",
+  });
+  const [savingRules, setSavingRules] = useState(false);
+  const [rulesSaved, setRulesSaved] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -56,6 +77,25 @@ export default function ComissoesPage() {
     const data = await res.json();
     setCommissions(data.commissions ?? []);
     setLoading(false);
+  }
+
+  function loadRules() {
+    fetch("/api/commission-rules")
+      .then((r) => r.json())
+      .then((d) => {
+        const r: CommissionRules | null = d.rules ?? null;
+        setRules(r);
+        if (r) {
+          setRulesForm({
+            sdr_base_amount: String(r.sdr_base_amount ?? ""),
+            closer_base_amount: String(r.closer_base_amount ?? ""),
+            campaign_active: r.campaign_active,
+            campaign_label: r.campaign_label ?? "",
+            campaign_sdr_amount: r.campaign_sdr_amount != null ? String(r.campaign_sdr_amount) : "",
+            campaign_closer_amount: r.campaign_closer_amount != null ? String(r.campaign_closer_amount) : "",
+          });
+        }
+      });
   }
 
   useEffect(() => {
@@ -66,7 +106,33 @@ export default function ComissoesPage() {
       .then((r) => r.json())
       .then((d) => setTeam((d.team ?? []).filter((t: TeamMember) => t.role === "sdr" || t.role === "closer")));
     load();
+    loadRules();
   }, []);
+
+  async function saveRules(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingRules(true);
+    setRulesSaved(null);
+    const res = await fetch("/api/commission-rules", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sdr_base_amount: Number(rulesForm.sdr_base_amount) || 0,
+        closer_base_amount: Number(rulesForm.closer_base_amount) || 0,
+        campaign_active: rulesForm.campaign_active,
+        campaign_label: rulesForm.campaign_label || null,
+        campaign_sdr_amount: rulesForm.campaign_sdr_amount ? Number(rulesForm.campaign_sdr_amount) : null,
+        campaign_closer_amount: rulesForm.campaign_closer_amount ? Number(rulesForm.campaign_closer_amount) : null,
+      }),
+    });
+    setSavingRules(false);
+    if (res.ok) {
+      const data = await res.json();
+      setRulesSaved(data.created > 0 ? `Salvo — ${data.created} fixa(s) lançada(s) agora pro período atual.` : "Salvo.");
+      loadRules();
+      load();
+    }
+  }
 
   const isAdmin = role === "admin";
   const total = commissions.reduce((sum, c) => sum + c.amount, 0);
@@ -173,6 +239,62 @@ export default function ComissoesPage() {
             )}
           </div>
         </div>
+
+        {isAdmin && rules && (
+          <form onSubmit={saveRules} className="card" style={{ marginBottom: 20 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>tune</span>
+              Regra base de comissão
+            </h2>
+            <p style={{ fontSize: 12.5, color: "var(--text-faint)", marginTop: -6, marginBottom: 14 }}>
+              Define a fixa mensal automática de todo SDR e todo Closer ativo — sem precisar lançar um por um em "+ Nova comissão".
+            </p>
+            <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={labelStyle}>Base mensal · SDR</label>
+                <input type="number" min="0" step="0.01" value={rulesForm.sdr_base_amount} onChange={(e) => setRulesForm({ ...rulesForm, sdr_base_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
+              </div>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={labelStyle}>Base mensal · Closer</label>
+                <input type="number" min="0" step="0.01" value={rulesForm.closer_base_amount} onChange={(e) => setRulesForm({ ...rulesForm, closer_base_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
+              </div>
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, marginBottom: rulesForm.campaign_active ? 10 : 0, cursor: "pointer" }}>
+              <input type="checkbox" checked={rulesForm.campaign_active} onChange={(e) => setRulesForm({ ...rulesForm, campaign_active: e.target.checked })} />
+              Campanha ativa — aumentar comissionamento nessa semana/período
+            </label>
+
+            {rulesForm.campaign_active && (
+              <div style={{ background: "var(--surface-muted)", borderRadius: 10, padding: 12, marginBottom: 4 }}>
+                <label style={labelStyle}>Nome da campanha (opcional)</label>
+                <input value={rulesForm.campaign_label} onChange={(e) => setRulesForm({ ...rulesForm, campaign_label: e.target.value })} style={inputStyle} placeholder="Ex: Semana do Black Friday" />
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                  <div style={{ flex: "1 1 180px" }}>
+                    <label style={labelStyle}>Valor de campanha · SDR</label>
+                    <input type="number" min="0" step="0.01" value={rulesForm.campaign_sdr_amount} onChange={(e) => setRulesForm({ ...rulesForm, campaign_sdr_amount: e.target.value })} style={inputStyle} placeholder="Deixe em branco pra usar a base" />
+                  </div>
+                  <div style={{ flex: "1 1 180px" }}>
+                    <label style={labelStyle}>Valor de campanha · Closer</label>
+                    <input type="number" min="0" step="0.01" value={rulesForm.campaign_closer_amount} onChange={(e) => setRulesForm({ ...rulesForm, campaign_closer_amount: e.target.value })} style={inputStyle} placeholder="Deixe em branco pra usar a base" />
+                  </div>
+                </div>
+                <p style={{ fontSize: 11.5, color: "var(--text-faint)", margin: "4px 0 0" }}>
+                  Enquanto ativa, esse valor substitui a base mensal só pra quem ainda não tem a fixa lançada no período — não mexe em fixas já geradas.
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
+              <button type="submit" disabled={savingRules} className="btn-primary" style={{ opacity: savingRules ? 0.6 : 1 }}>
+                {savingRules ? "Salvando…" : "Salvar regra"}
+              </button>
+              {rulesSaved && (
+                <span style={{ fontSize: 12.5, color: "var(--accent-darker)", fontWeight: 700 }}>✓ {rulesSaved}</span>
+              )}
+            </div>
+          </form>
+        )}
 
         {loading ? (
           <p>Carregando…</p>

@@ -158,6 +158,15 @@ export const commissionSchema = z.object({
   tipo: z.enum(["fixo", "extra", "venda", "reuniao"]).optional(),
 });
 
+export const commissionRulesUpdateSchema = z.object({
+  sdr_base_amount: z.number().nonnegative().optional(),
+  closer_base_amount: z.number().nonnegative().optional(),
+  campaign_active: z.boolean().optional(),
+  campaign_label: z.string().nullable().optional(),
+  campaign_sdr_amount: z.number().nonnegative().nullable().optional(),
+  campaign_closer_amount: z.number().nonnegative().nullable().optional(),
+});
+
 export const leadSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
