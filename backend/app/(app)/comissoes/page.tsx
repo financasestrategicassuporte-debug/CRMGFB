@@ -15,6 +15,7 @@ type Commission = {
 };
 
 type TeamMember = { id: string; name: string; role: string };
+type Plan = { id: string; name: string; active: boolean };
 
 type MeetingWon = {
   dealId: string;
@@ -31,17 +32,24 @@ type CommissionRules = {
   id: string;
   sdr_base_amount: number;
   closer_base_amount: number;
-  sdr_meeting_amount: number;
-  sdr_sale_amount: number;
-  closer_meeting_amount: number;
-  closer_sale_amount: number;
   campaign_active: boolean;
   campaign_label: string | null;
   campaign_sdr_amount: number | null;
   campaign_closer_amount: number | null;
 };
 
+type ProductRateForm = {
+  product_id: string | null;
+  label: string;
+  sdr_meeting_amount: string;
+  sdr_sale_amount: string;
+  closer_meeting_amount: string;
+  closer_sale_amount: string;
+};
+
 const TIPO_LABEL: Record<string, string> = { fixo: "Fixo", extra: "Extra", venda: "Por venda", reuniao: "Reunião comparecida" };
+const ROLE_ALL_SDR = "__role_sdr__";
+const ROLE_ALL_CLOSER = "__role_closer__";
 
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -84,10 +92,6 @@ export default function ComissoesPage() {
   const [rulesForm, setRulesForm] = useState({
     sdr_base_amount: "",
     closer_base_amount: "",
-    sdr_meeting_amount: "",
-    sdr_sale_amount: "",
-    closer_meeting_amount: "",
-    closer_sale_amount: "",
     campaign_active: false,
     campaign_label: "",
     campaign_sdr_amount: "",
@@ -95,6 +99,9 @@ export default function ComissoesPage() {
   });
   const [savingRules, setSavingRules] = useState(false);
   const [rulesSaved, setRulesSaved] = useState<string | null>(null);
+  const [productRatesForm, setProductRatesForm] = useState<ProductRateForm[]>([]);
+  const [savingProductRates, setSavingProductRates] = useState(false);
+  const [productRatesSaved, setProductRatesSaved] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -114,10 +121,6 @@ export default function ComissoesPage() {
           setRulesForm({
             sdr_base_amount: String(r.sdr_base_amount ?? ""),
             closer_base_amount: String(r.closer_base_amount ?? ""),
-            sdr_meeting_amount: String(r.sdr_meeting_amount ?? ""),
-            sdr_sale_amount: String(r.sdr_sale_amount ?? ""),
-            closer_meeting_amount: String(r.closer_meeting_amount ?? ""),
-            closer_sale_amount: String(r.closer_sale_amount ?? ""),
             campaign_active: r.campaign_active,
             campaign_label: r.campaign_label ?? "",
             campaign_sdr_amount: r.campaign_sdr_amount != null ? String(r.campaign_sdr_amount) : "",
@@ -125,6 +128,43 @@ export default function ComissoesPage() {
           });
         }
       });
+  }
+
+  async function loadProductRates() {
+    const [ratesRes, plansRes] = await Promise.all([fetch("/api/commission-product-rates"), fetch("/api/plans")]);
+    const ratesData = await ratesRes.json();
+    const plansData = await plansRes.json();
+    const rates: any[] = ratesData.rates ?? [];
+    const plans: Plan[] = (plansData.plans ?? []).filter((p: Plan) => p.active);
+
+    const geral = rates.find((r) => r.product_id === null);
+    const rows: ProductRateForm[] = [
+      {
+        product_id: null,
+        label: "Geral (padrão)",
+        sdr_meeting_amount: String(geral?.sdr_meeting_amount ?? 0),
+        sdr_sale_amount: String(geral?.sdr_sale_amount ?? 0),
+        closer_meeting_amount: String(geral?.closer_meeting_amount ?? 0),
+        closer_sale_amount: String(geral?.closer_sale_amount ?? 0),
+      },
+      // Produto sem override próprio ainda não existe como linha no
+      // banco — mostra os valores herdados da linha Geral (não "0"),
+      // senão salvar a tabela sem mexer em nada criaria uma taxa zerada
+      // pra cada produto, desligando o automático que só existia
+      // porque caía na Geral.
+      ...plans.map((p) => {
+        const r = rates.find((x) => x.product_id === p.id);
+        return {
+          product_id: p.id,
+          label: p.name,
+          sdr_meeting_amount: String(r?.sdr_meeting_amount ?? geral?.sdr_meeting_amount ?? 0),
+          sdr_sale_amount: String(r?.sdr_sale_amount ?? geral?.sdr_sale_amount ?? 0),
+          closer_meeting_amount: String(r?.closer_meeting_amount ?? geral?.closer_meeting_amount ?? 0),
+          closer_sale_amount: String(r?.closer_sale_amount ?? geral?.closer_sale_amount ?? 0),
+        };
+      }),
+    ];
+    setProductRatesForm(rows);
   }
 
   useEffect(() => {
@@ -136,6 +176,7 @@ export default function ComissoesPage() {
       .then((d) => setTeam((d.team ?? []).filter((t: TeamMember) => t.role === "sdr" || t.role === "closer")));
     load();
     loadRules();
+    loadProductRates();
     fetch("/api/commissions/meetings-won")
       .then((r) => r.json())
       .then((d) => setMeetingsWon(d.meetings ?? []));
@@ -151,10 +192,6 @@ export default function ComissoesPage() {
       body: JSON.stringify({
         sdr_base_amount: Number(rulesForm.sdr_base_amount) || 0,
         closer_base_amount: Number(rulesForm.closer_base_amount) || 0,
-        sdr_meeting_amount: Number(rulesForm.sdr_meeting_amount) || 0,
-        sdr_sale_amount: Number(rulesForm.sdr_sale_amount) || 0,
-        closer_meeting_amount: Number(rulesForm.closer_meeting_amount) || 0,
-        closer_sale_amount: Number(rulesForm.closer_sale_amount) || 0,
         campaign_active: rulesForm.campaign_active,
         campaign_label: rulesForm.campaign_label || null,
         campaign_sdr_amount: rulesForm.campaign_sdr_amount ? Number(rulesForm.campaign_sdr_amount) : null,
@@ -170,6 +207,34 @@ export default function ComissoesPage() {
     }
   }
 
+  function updateProductRate(index: number, field: keyof ProductRateForm, value: string) {
+    setProductRatesForm((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+  }
+
+  async function saveProductRates(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProductRates(true);
+    setProductRatesSaved(false);
+    const res = await fetch("/api/commission-product-rates", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rates: productRatesForm.map((r) => ({
+          product_id: r.product_id,
+          sdr_meeting_amount: Number(r.sdr_meeting_amount) || 0,
+          sdr_sale_amount: Number(r.sdr_sale_amount) || 0,
+          closer_meeting_amount: Number(r.closer_meeting_amount) || 0,
+          closer_sale_amount: Number(r.closer_sale_amount) || 0,
+        })),
+      }),
+    });
+    setSavingProductRates(false);
+    if (res.ok) {
+      setProductRatesSaved(true);
+      loadProductRates();
+    }
+  }
+
   const isAdmin = role === "admin";
   const total = commissions.reduce((sum, c) => sum + c.amount, 0);
   const totalPending = commissions.filter((c) => c.status === "pending").reduce((sum, c) => sum + c.amount, 0);
@@ -179,16 +244,26 @@ export default function ComissoesPage() {
   async function createCommission(e: React.FormEvent) {
     e.preventDefault();
     if (!form.closer_id || !form.amount) return;
-    await fetch("/api/commissions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        closer_id: form.closer_id,
-        tipo: form.tipo,
-        amount: Number(form.amount),
-        period: `${form.period}-01`,
-      }),
-    });
+    const targets =
+      form.closer_id === ROLE_ALL_SDR
+        ? team.filter((t) => t.role === "sdr").map((t) => t.id)
+        : form.closer_id === ROLE_ALL_CLOSER
+        ? team.filter((t) => t.role === "closer").map((t) => t.id)
+        : [form.closer_id];
+    await Promise.all(
+      targets.map((closerId) =>
+        fetch("/api/commissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            closer_id: closerId,
+            tipo: form.tipo,
+            amount: Number(form.amount),
+            period: `${form.period}-01`,
+          }),
+        })
+      )
+    );
     setForm(formDefaults);
     setShowForm(false);
     load();
@@ -296,31 +371,9 @@ export default function ComissoesPage() {
               </div>
             </div>
 
-            <p style={{ fontSize: 12.5, color: "var(--text-faint)", marginTop: 0, marginBottom: 10 }}>
-              Por evento — mesma lógica do SDR (reunião comparecida + venda fechada), agora também pro Closer (identificado pela tarefa de Reunião de cada negociação). Deixe 0 pra desativar o automático de um papel.
-            </p>
-            <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 180px" }}>
-                <label style={labelStyle}>Por reunião comparecida · SDR</label>
-                <input type="number" min="0" step="0.01" value={rulesForm.sdr_meeting_amount} onChange={(e) => setRulesForm({ ...rulesForm, sdr_meeting_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
-              </div>
-              <div style={{ flex: "1 1 180px" }}>
-                <label style={labelStyle}>Por venda fechada · SDR</label>
-                <input type="number" min="0" step="0.01" value={rulesForm.sdr_sale_amount} onChange={(e) => setRulesForm({ ...rulesForm, sdr_sale_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
-              </div>
-              <div style={{ flex: "1 1 180px" }}>
-                <label style={labelStyle}>Por reunião comparecida · Closer</label>
-                <input type="number" min="0" step="0.01" value={rulesForm.closer_meeting_amount} onChange={(e) => setRulesForm({ ...rulesForm, closer_meeting_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
-              </div>
-              <div style={{ flex: "1 1 180px" }}>
-                <label style={labelStyle}>Por venda fechada · Closer</label>
-                <input type="number" min="0" step="0.01" value={rulesForm.closer_sale_amount} onChange={(e) => setRulesForm({ ...rulesForm, closer_sale_amount: e.target.value })} style={inputStyle} placeholder="R$ 0,00" />
-              </div>
-            </div>
-
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, marginBottom: rulesForm.campaign_active ? 10 : 0, cursor: "pointer" }}>
               <input type="checkbox" checked={rulesForm.campaign_active} onChange={(e) => setRulesForm({ ...rulesForm, campaign_active: e.target.checked })} />
-              Campanha ativa — aumentar comissionamento nessa semana/período
+              Campanha ativa — aumentar a fixa mensal nessa semana/período
             </label>
 
             {rulesForm.campaign_active && (
@@ -350,6 +403,56 @@ export default function ComissoesPage() {
               {rulesSaved && (
                 <span style={{ fontSize: 12.5, color: "var(--accent-darker)", fontWeight: 700 }}>✓ {rulesSaved}</span>
               )}
+            </div>
+          </form>
+        )}
+
+        {isAdmin && productRatesForm.length > 0 && (
+          <form onSubmit={saveProductRates} className="card" style={{ marginBottom: 20 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 0, display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="msym" style={{ fontSize: 18, color: "var(--accent-darker)" }}>category</span>
+              Comissão por evento — por produto
+            </h2>
+            <p style={{ fontSize: 12.5, color: "var(--text-faint)", marginTop: -6, marginBottom: 14 }}>
+              Valor automático por reunião comparecida e por venda fechada (SDR + Closer), configurável por produto — produtos diferentes têm ticket e margem diferentes. Um negócio sem produto (ou de um produto sem taxa própria) usa a linha "Geral". Deixe 0 pra desativar o automático daquela combinação.
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: "left" }}>
+                    <th style={ratesThStyle}>Produto</th>
+                    <th style={ratesThStyle}>Reunião · SDR</th>
+                    <th style={ratesThStyle}>Venda · SDR</th>
+                    <th style={ratesThStyle}>Reunião · Closer</th>
+                    <th style={ratesThStyle}>Venda · Closer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productRatesForm.map((row, i) => (
+                    <tr key={row.product_id ?? "geral"} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ ...ratesTdStyle, fontWeight: 700 }}>{row.label}</td>
+                      <td style={ratesTdStyle}>
+                        <input type="number" min="0" step="0.01" value={row.sdr_meeting_amount} onChange={(e) => updateProductRate(i, "sdr_meeting_amount", e.target.value)} style={rateInputStyle} />
+                      </td>
+                      <td style={ratesTdStyle}>
+                        <input type="number" min="0" step="0.01" value={row.sdr_sale_amount} onChange={(e) => updateProductRate(i, "sdr_sale_amount", e.target.value)} style={rateInputStyle} />
+                      </td>
+                      <td style={ratesTdStyle}>
+                        <input type="number" min="0" step="0.01" value={row.closer_meeting_amount} onChange={(e) => updateProductRate(i, "closer_meeting_amount", e.target.value)} style={rateInputStyle} />
+                      </td>
+                      <td style={ratesTdStyle}>
+                        <input type="number" min="0" step="0.01" value={row.closer_sale_amount} onChange={(e) => updateProductRate(i, "closer_sale_amount", e.target.value)} style={rateInputStyle} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
+              <button type="submit" disabled={savingProductRates} className="btn-primary" style={{ opacity: savingProductRates ? 0.6 : 1 }}>
+                {savingProductRates ? "Salvando…" : "Salvar taxas por produto"}
+              </button>
+              {productRatesSaved && <span style={{ fontSize: 12.5, color: "var(--accent-darker)", fontWeight: 700 }}>✓ Salvo.</span>}
             </div>
           </form>
         )}
@@ -436,10 +539,17 @@ export default function ComissoesPage() {
             <label style={labelStyle}>Colaborador</label>
             <select required value={form.closer_id} onChange={(e) => setForm({ ...form, closer_id: e.target.value })} style={inputStyle}>
               <option value="">Selecione…</option>
+              <option value={ROLE_ALL_SDR}>— Todos os SDR —</option>
+              <option value={ROLE_ALL_CLOSER}>— Todos os Closer —</option>
               {team.map((t) => (
                 <option key={t.id} value={t.id}>{t.name} ({t.role === "sdr" ? "SDR" : "Closer"})</option>
               ))}
             </select>
+            {(form.closer_id === ROLE_ALL_SDR || form.closer_id === ROLE_ALL_CLOSER) && (
+              <p style={{ fontSize: 11.5, color: "var(--accent-darker)", marginTop: -2 }}>
+                Lança essa comissão pra cada {form.closer_id === ROLE_ALL_SDR ? "SDR" : "Closer"} ativo de uma vez.
+              </p>
+            )}
             <label style={labelStyle}>Tipo</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
               {(["fixo", "extra"] as const).map((tipo) => (
@@ -504,3 +614,7 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   marginBottom: 6,
 };
+
+const ratesThStyle: React.CSSProperties = { padding: "6px 10px", fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase" };
+const ratesTdStyle: React.CSSProperties = { padding: "6px 10px" };
+const rateInputStyle: React.CSSProperties = { width: 90, border: "1px solid var(--border)", borderRadius: 8, padding: "6px 8px", fontSize: 13 };

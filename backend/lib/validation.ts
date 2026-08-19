@@ -161,14 +161,24 @@ export const commissionSchema = z.object({
 export const commissionRulesUpdateSchema = z.object({
   sdr_base_amount: z.number().nonnegative().optional(),
   closer_base_amount: z.number().nonnegative().optional(),
-  sdr_meeting_amount: z.number().nonnegative().optional(),
-  sdr_sale_amount: z.number().nonnegative().optional(),
-  closer_meeting_amount: z.number().nonnegative().optional(),
-  closer_sale_amount: z.number().nonnegative().optional(),
   campaign_active: z.boolean().optional(),
   campaign_label: z.string().nullable().optional(),
   campaign_sdr_amount: z.number().nonnegative().nullable().optional(),
   campaign_closer_amount: z.number().nonnegative().nullable().optional(),
+});
+
+/** Taxa por evento (reunião/venda) de um produto específico — `null` em
+ * `product_id` é a linha "Geral" (usada como padrão). */
+export const commissionProductRateSchema = z.object({
+  product_id: z.string().uuid().nullable(),
+  sdr_meeting_amount: z.number().nonnegative(),
+  sdr_sale_amount: z.number().nonnegative(),
+  closer_meeting_amount: z.number().nonnegative(),
+  closer_sale_amount: z.number().nonnegative(),
+});
+
+export const commissionProductRatesUpdateSchema = z.object({
+  rates: z.array(commissionProductRateSchema).min(1),
 });
 
 export const leadSchema = z.object({

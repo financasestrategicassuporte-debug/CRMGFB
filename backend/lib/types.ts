@@ -519,6 +519,44 @@ export type Database = {
           },
         ]
       }
+      commission_product_rates: {
+        Row: {
+          closer_meeting_amount: number
+          closer_sale_amount: number
+          id: string
+          product_id: string | null
+          sdr_meeting_amount: number
+          sdr_sale_amount: number
+          updated_at: string
+        }
+        Insert: {
+          closer_meeting_amount?: number
+          closer_sale_amount?: number
+          id?: string
+          product_id?: string | null
+          sdr_meeting_amount?: number
+          sdr_sale_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          closer_meeting_amount?: number
+          closer_sale_amount?: number
+          id?: string
+          product_id?: string | null
+          sdr_meeting_amount?: number
+          sdr_sale_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_product_rates_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_rules: {
         Row: {
           campaign_active: boolean
@@ -526,12 +564,8 @@ export type Database = {
           campaign_label: string | null
           campaign_sdr_amount: number | null
           closer_base_amount: number
-          closer_meeting_amount: number
-          closer_sale_amount: number
           id: string
           sdr_base_amount: number
-          sdr_meeting_amount: number
-          sdr_sale_amount: number
           updated_at: string
         }
         Insert: {
@@ -540,12 +574,8 @@ export type Database = {
           campaign_label?: string | null
           campaign_sdr_amount?: number | null
           closer_base_amount?: number
-          closer_meeting_amount?: number
-          closer_sale_amount?: number
           id?: string
           sdr_base_amount?: number
-          sdr_meeting_amount?: number
-          sdr_sale_amount?: number
           updated_at?: string
         }
         Update: {
@@ -554,12 +584,8 @@ export type Database = {
           campaign_label?: string | null
           campaign_sdr_amount?: number | null
           closer_base_amount?: number
-          closer_meeting_amount?: number
-          closer_sale_amount?: number
           id?: string
           sdr_base_amount?: number
-          sdr_meeting_amount?: number
-          sdr_sale_amount?: number
           updated_at?: string
         }
         Relationships: []

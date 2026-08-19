@@ -4,8 +4,11 @@ import type { Database } from "@/lib/types";
 /** Comissionamento automático por reunião comparecida + venda fechada —
  * SDR (dono da negociação, `deals.assigned_to`) e Closer (responsável
  * pela tarefa de Reunião daquela negociação, `deal_tasks.assigned_to`
- * quando task_type é "reuniao") ganham cada um a sua, com os valores
- * configurados em /comissoes (admin) — ver `commission_rules`. A
+ * quando task_type é "reuniao") ganham cada um a sua, com o valor
+ * configurado em /comissoes (admin) POR PRODUTO — ver
+ * `commission_product_rates` — já que produtos diferentes têm ticket e
+ * margem diferentes. Um negócio sem produto definido (ou um produto sem
+ * taxa própria cadastrada) cai na taxa "Geral" (product_id null). A
  * constraint (deal_id, tipo, closer_id) no banco garante que cada
  * colaborador só ganha uma vez por negociação/tipo, então essas funções
  * podem ser chamadas mais de uma vez sem duplicar (insert repetido só
@@ -59,20 +62,34 @@ async function awardIfRole(
   });
 }
 
+/** Taxa por evento (reunião/venda) do produto do negócio — cai pra
+ * "Geral" (product_id null) se o negócio não tem produto definido ou se
+ * aquele produto não tem taxa própria cadastrada ainda. */
+async function getProductRate(admin: SupabaseClient<Database>, productId: string | null) {
+  if (productId) {
+    const { data } = await admin.from("commission_product_rates").select("*").eq("product_id", productId).maybeSingle();
+    if (data) return data;
+  }
+  const { data: geral } = await admin.from("commission_product_rates").select("*").is("product_id", null).maybeSingle();
+  return geral;
+}
+
 export async function awardMeetingCommission(admin: SupabaseClient<Database>, dealId: string, assignedTo: string | null) {
-  const rules = await getCommissionRules(admin);
-  if (!rules) return;
-  await awardIfRole(admin, dealId, assignedTo, "sdr", rules.sdr_meeting_amount, "reuniao");
+  const { data: deal } = await admin.from("deals").select("product_id").eq("id", dealId).maybeSingle();
+  const rate = await getProductRate(admin, deal?.product_id ?? null);
+  if (!rate) return;
+  await awardIfRole(admin, dealId, assignedTo, "sdr", rate.sdr_meeting_amount, "reuniao");
   const closerId = await findCloserForDeal(admin, dealId);
-  await awardIfRole(admin, dealId, closerId, "closer", rules.closer_meeting_amount, "reuniao");
+  await awardIfRole(admin, dealId, closerId, "closer", rate.closer_meeting_amount, "reuniao");
 }
 
 export async function awardSaleCommission(admin: SupabaseClient<Database>, dealId: string, assignedTo: string | null) {
-  const rules = await getCommissionRules(admin);
-  if (!rules) return;
-  await awardIfRole(admin, dealId, assignedTo, "sdr", rules.sdr_sale_amount, "venda");
+  const { data: deal } = await admin.from("deals").select("product_id").eq("id", dealId).maybeSingle();
+  const rate = await getProductRate(admin, deal?.product_id ?? null);
+  if (!rate) return;
+  await awardIfRole(admin, dealId, assignedTo, "sdr", rate.sdr_sale_amount, "venda");
   const closerId = await findCloserForDeal(admin, dealId);
-  await awardIfRole(admin, dealId, closerId, "closer", rules.closer_sale_amount, "venda");
+  await awardIfRole(admin, dealId, closerId, "closer", rate.closer_sale_amount, "venda");
 }
 
 /** Motivo de perda que indica que a qualificação foi mal feita/mentida
@@ -88,12 +105,12 @@ export async function revokeSdrCommission(admin: SupabaseClient<Database>, dealI
   await admin.from("commissions").delete().eq("deal_id", dealId).in("tipo", ["reuniao", "venda"]);
 }
 
-/** Regra base de comissionamento (singleton) — ver migrações
- * 0016_commission_rules.sql / 0017_closer_commission_rules.sql.
- * Configurável em /comissoes (admin): fixa mensal (SDR/Closer) + valor
- * por reunião comparecida e por venda fechada (SDR/Closer), com um
- * valor de campanha opcional que substitui só a fixa mensal enquanto
- * estiver ligado. */
+/** Regra base de comissionamento (singleton) — ver migração
+ * 0016_commission_rules.sql. Configurável em /comissoes (admin): fixa
+ * mensal (SDR/Closer), com um valor de campanha opcional que a
+ * substitui enquanto estiver ligado. O valor por reunião/venda mora em
+ * `commission_product_rates` (por produto), não aqui — ver
+ * `getProductRate`. */
 export async function getCommissionRules(admin: SupabaseClient<Database>) {
   const { data } = await admin.from("commission_rules").select("*").limit(1).maybeSingle();
   return data;
